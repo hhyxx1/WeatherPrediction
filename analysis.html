@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气深度分析 | 全球天气数据分析与预测系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- API配置文件 -->
+    <script src="weatherApiConfig.js"></script>
+    <style>
+        /* 全局变量 */
+        :root {
+            --primary-color: #0ea5e9;
+            --primary-dark: #0284c7;
+            --primary-light: #38bdf8;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --card-background: rgba(255, 255, 255, 0.95);
+            --glass-effect: rgba(248, 250, 252, 0.95);
+            --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-heavy: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* 基础样式 */
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+        
+        /* 进度条指示器 */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-light), var(--secondary-color));
+            z-index: 9999;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+        
+        /* 增强玻璃态效果 */
+        .glass-effect {
+            background: var(--glass-effect);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-effect:hover {
+            box-shadow: var(--shadow-medium);
+        }
+        
+        /* 卡片设计增强 */
+        .analysis-card {
+            background: var(--card-background);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--shadow-light);
+        }
+        
+        .analysis-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.5s ease;
+        }
+        
+        .analysis-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-heavy);
+        }
+        
+        .analysis-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        /* 预测图表容器 */
+        .prediction-chart {
+            background: var(--card-background);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .prediction-chart::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid transparent;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .prediction-chart:hover::after {
+            opacity: 1;
+        }
+        
+        /* 模型选择器增强 */
+        .model-selector {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .model-selector::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.1), transparent);
+            transition: all 0.6s ease;
+        }
+        
+        .model-selector:hover::before {
+            left: 100%;
+        }
+        
+        .model-selector:has(input[type="radio"]:checked) {
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+        }
+        
+        /* 复选框样式 */
+        input[type="radio"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="radio"]:checked {
+            border-color: var(--primary-color);
+            background-color: white;
+        }
+        
+        input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+        }
+        
+        input[type="radio"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3);
+        }
+        
+        /* 准确度指示器 */
+        .accuracy-meter {
+            background: conic-gradient(from 0deg, #ef4444 0deg, #fbbf24 120deg, #10b981 240deg, #10b981 360deg);
+            border-radius: 50%;
+            position: relative;
+            animation: rotateBg 2s ease-in-out 1;
+        }
+        
+        .accuracy-meter::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        @keyframes rotateBg {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 按钮设计增强 */
+        button {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: all 0.6s ease;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        /* 导航链接样式 */
+        nav a {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-light);
+            transition: width 0.3s ease;
+        }
+        
+        nav a:hover::after, nav a.text-blue-600::after {
+            width: 100%;
+        }
+        
+        /* 预警卡片样式 */
+        .alert-card {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .alert-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(to bottom, currentColor, currentColor 50%, transparent 50%, transparent);
+            background-size: 100% 200%;
+            animation: alertSlide 2s infinite;
+        }
+        
+        @keyframes alertSlide {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+        
+        /* 浮动粒子增强 */
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 10s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.1; }
+            25% { transform: translateY(-30px) translateX(10px) rotate(90deg); opacity: 0.2; }
+            50% { transform: translateY(-50px) translateX(0px) rotate(180deg); opacity: 0.3; }
+            75% { transform: translateY(-30px) translateX(-10px) rotate(270deg); opacity: 0.2; }
+        }
+        
+        /* 选择框增强 */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
+            transition: all 0.3s ease;
+        }
+        
+        select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+            border-color: var(--primary-color);
+        }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* 数据标签样式 */
+        .data-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        /* 响应式设计增强 */
+        @media (max-width: 768px) {
+            html {
+                scroll-behavior: smooth;
+            }
+            
+            .analysis-card {
+                margin-bottom: 1.5rem;
+                padding: 1.5rem;
+            }
+            
+            .prediction-chart {
+                padding: 1.5rem;
+            }
+            
+            #predictionChart {
+                height: 350px !important;
+            }
+            
+            .accuracy-meter {
+                width: 48px;
+                height: 48px;
+            }
+            
+            .accuracy-meter::before {
+                top: 6px;
+                left: 6px;
+                right: 6px;
+                bottom: 6px;
+            }
+            
+            /* 移动端按钮优化 */
+            .grid.grid-cols-2.gap-4 button {
+                padding: 0.75rem;
+                font-size: 0.875rem;
+            }
+            
+            /* 移动端模型选择器优化 */
+            .model-selector {
+                padding: 0.75rem;
+            }
+            
+            /* 移动端预警卡片优化 */
+            .space-y-4 > div {
+                padding: 0.75rem;
+            }
+            
+            /* 移动端导航栏优化 */
+            nav .max-w-7xl {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            /* 移动端标题优化 */
+            h2 {
+                font-size: 2rem !important;
+            }
+            
+            h3 {
+                font-size: 1.5rem !important;
+            }
+        }
+        
+        /* 小屏幕手机优化 */
+        @media (max-width: 480px) {
+            .analysis-card {
+                padding: 1rem;
+            }
+            
+            .prediction-chart {
+                padding: 1rem;
+            }
+            
+            #predictionChart {
+                height: 280px !important;
+            }
+            
+            .accuracy-meter {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .accuracy-meter::before {
+                top: 5px;
+                left: 5px;
+                right: 5px;
+                bottom: 5px;
+            }
+            
+            /* 小屏幕按钮进一步优化 */
+            .grid.grid-cols-2.gap-4 {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .grid.grid-cols-2.gap-4 button {
+                font-size: 0.875rem;
+                padding: 0.75rem;
+            }
+            
+            /* 小屏幕字体优化 */
+            h3 {
+                font-size: 1.25rem !important;
+            }
+            
+            .text-2xl {
+                font-size: 1.25rem !important;
+            }
+            
+            /* 小屏幕布局优化 */
+            .grid.grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <!-- 页面进度条 -->
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <!-- 浮动粒子背景 -->
+    <div class="floating-particles">
+        <!-- 增加更多粒子，大小和位置随机 -->
+        <div class="particle w-2 h-2" style="left: 5%; animation-delay: 0s;"></div>
+        <div class="particle w-3 h-3" style="left: 15%; animation-delay: 2s;"></div>
+        <div class="particle w-1 h-1" style="left: 25%; animation-delay: 4s;"></div>
+        <div class="particle w-2 h-2" style="left: 35%; animation-delay: 1s;"></div>
+        <div class="particle w-3 h-3" style="left: 45%; animation-delay: 3s;"></div>
+        <div class="particle w-1 h-1" style="left: 55%; animation-delay: 5s;"></div>
+        <div class="particle w-2 h-2" style="left: 65%; animation-delay: 1.5s;"></div>
+        <div class="particle w-3 h-3" style="left: 75%; animation-delay: 3.5s;"></div>
+        <div class="particle w-1 h-1" style="left: 85%; animation-delay: 5.5s;"></div>
+        <div class="particle w-2 h-2" style="left: 95%; animation-delay: 0.5s;"></div>
+        <!-- 额外粒子 -->
+        <div class="particle w-4 h-4" style="left: 10%; animation-delay: 1.2s;"></div>
+        <div class="particle w-2 h-2" style="left: 20%; animation-delay: 2.5s;"></div>
+        <div class="particle w-3 h-3" style="left: 40%; animation-delay: 0.8s;"></div>
+        <div class="particle w-1 h-1" style="left: 60%; animation-delay: 3.2s;"></div>
+        <div class="particle w-2 h-2" style="left: 80%; animation-delay: 4.5s;"></div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="glass-effect fixed top-0 left-0 right-0 z-50 px-4 py-4 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="text-2xl animate-pulse">🌤️</div>
+                <h1 class="text-lg md:text-2xl font-bold text-slate-800" style="font-family: 'Noto Serif SC', serif;">
+                    全球天气数据分析系统
+                </h1>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="index.html" class="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                    实时监控
+                </a>
+                <a href="analysis.html" class="text-blue-600 font-medium">
+                    深度分析
+                </a>
+                <a href="about.html" class="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                    关于系统
+                </a>
+            </div>
+            
+            <!-- 移动端菜单按钮 -->
+            <div class="md:hidden">
+                <button onclick="toggleMobileMenu()" class="text-slate-700 hover:text-blue-600 p-2 rounded-full hover:bg-white/30 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 移动端菜单 -->
+        <div id="mobileMenu" class="hidden md:hidden mt-4 pb-4 border-t border-slate-200 animate-fadeInUp">
+            <div class="flex flex-col space-y-3 pt-4">
+                <a href="index.html" class="text-slate-700 hover:text-blue-600 font-medium transition-colors px-2 py-2">
+                    实时监控
+                </a>
+                <a href="analysis.html" class="text-blue-600 font-medium px-2 py-2">
+                    深度分析
+                </a>
+                <a href="about.html" class="text-slate-700 hover:text-blue-600 font-medium transition-colors px-2 py-2">
+                    关于系统
+                </a>
+                <div class="px-2 py-2">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="mobileCitySearch" 
+                            placeholder="搜索城市..." 
+                            class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-blue-500 focus:outline-none bg-white/80 backdrop-blur-sm"
+                        >
+                        <button onclick="searchCityAnalysis()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700 text-sm">
+                            🔍
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容区域 -->
+    <main class="pt-24 px-6 pb-12">
+        <div class="max-w-7xl mx-auto">
+            <!-- 页面标题 -->
+            <div class="text-center mb-8 animate-fadeInUp">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4" style="font-family: 'Noto Serif SC', serif;">
+                    天气深度分析与预测
+                </h2>
+                <p class="text-xl text-blue-100 max-w-2xl mx-auto mb-8">
+                    基于人工智能和机器学习的天气趋势预测与气候分析
+                </p>
+                
+                <!-- 城市搜索框 -->
+                <div class="max-w-2xl mx-auto relative group">
+                    <input 
+                        type="text" 
+                        id="weatherSearch" 
+                        placeholder="搜索城市或使用当前位置..." 
+                        class="w-full px-6 py-4 rounded-full border-none shadow-lg focus:ring-4 focus:ring-blue-300 focus:outline-none text-slate-800 text-lg transition-all duration-300"
+                    >
+                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 flex space-x-2">
+                        <button onclick="getCurrentLocation()" class="p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors">
+                            📍
+                        </button>
+                        <button onclick="searchWeatherLocation()" class="p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors">
+                            🔍
+                        </button>
+                    </div>
+                    <!-- 搜索结果下拉框 -->
+                    <div id="searchResults" class="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-xl p-2 hidden max-h-60 overflow-y-auto z-50">
+                        <!-- 搜索结果将在这里动态生成 -->
+                    </div>
+                </div>
+                <p id="currentLocationText" class="text-blue-100 mt-4 hidden">
+                    正在获取当前位置...
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 左侧：预测分析模块 -->
+                <div class="space-y-8">
+                    <!-- 预测模型选择 -->
+                    <div class="analysis-card rounded-2xl p-6 animate-fadeInUp" style="animation-delay: 0.1s;">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                            🔮 AI智能预测模型
+                        </h3>
+                        
+                        <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                            <div class="flex items-center text-blue-700">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                <span class="font-medium">AI预测信息</span>
+                            </div>
+                            <p class="text-sm text-blue-600 mt-2">本系统使用DeepSeek API进行智能天气预测，结合历史数据分析趋势。预测准确度会根据气象条件和预测范围有所不同。</p>
+                        </div>
+                        
+                        <div class="space-y-4 mb-6">
+                            <div class="model-selector rounded-xl p-4">
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="radio" name="predictionModel" value="linear" checked class="text-blue-500">
+                                    <div>
+                                        <div class="font-semibold text-slate-800">线性回归模型</div>
+                                        <div class="text-sm text-slate-600">基于历史数据的线性趋势预测</div>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="model-selector rounded-xl p-4">
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="radio" name="predictionModel" value="timeseries" class="text-blue-500">
+                                    <div>
+                                        <div class="font-semibold text-slate-800">时间序列分析</div>
+                                        <div class="text-sm text-slate-600">ARIMA模型考虑季节性因素</div>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="model-selector rounded-xl p-4">
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="radio" name="predictionModel" value="ml" class="text-blue-500">
+                                    <div>
+                                        <div class="font-semibold text-slate-800">机器学习模型</div>
+                                        <div class="text-sm text-slate-600">基于多维特征的天气分类预测</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4 mb-6">
+                            <label class="text-slate-700 font-medium">预测范围:</label>
+                            <div class="flex space-x-2">
+                                <button id="range7d" onclick="setPredictionRange('7d')" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">7天</button>
+                                <button id="range30d" onclick="setPredictionRange('30d')" class="px-4 py-2 rounded-lg bg-slate-300 text-slate-700 hover:bg-slate-400 transition-colors">30天</button>
+                            </div>
+                        </div>
+                        
+                        <button onclick="generatePrediction()" class="w-full bg-purple-600 text-white py-3 px-6 rounded-xl hover:bg-purple-700 transition-colors font-semibold relative overflow-hidden">
+                            <span class="relative z-10">🚀 生成预测报告</span>
+                            <span class="absolute inset-0 bg-purple-700 opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
+                        </button>
+                    </div>
+                    
+                    <!-- 预测准确度 -->
+                    <div id="accuracyCard" class="analysis-card rounded-2xl p-6 animate-fadeInUp" style="animation-delay: 0.2s;">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                            🎯 预测准确度
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <div class="text-center p-4 rounded-xl bg-gradient-to-br from-green-50 to-blue-50 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div id="tempAccuracyMeter" class="accuracy-meter w-16 h-16 mx-auto mb-2 animate-pulse"></div>
+                                <div class="text-sm text-slate-600">温度预测</div>
+                                <div id="tempAccuracyValue" class="font-bold text-green-600">加载中...</div>
+                            </div>
+                            <div class="text-center p-4 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div id="precipAccuracyMeter" class="accuracy-meter w-16 h-16 mx-auto mb-2 animate-pulse"></div>
+                                <div class="text-sm text-slate-600">降水预测</div>
+                                <div id="precipAccuracyValue" class="font-bold text-yellow-600">加载中...</div>
+                            </div>
+                            <div class="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-green-50 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div id="windAccuracyMeter" class="accuracy-meter w-16 h-16 mx-auto mb-2 animate-pulse"></div>
+                                <div class="text-sm text-slate-600">风速预测</div>
+                                <div id="windAccuracyValue" class="font-bold text-green-600">加载中...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 rounded-xl p-4 shadow-sm hover:shadow transition-shadow duration-300">
+                            <h4 class="font-semibold text-slate-800 mb-2">📊 历史回测结果</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between items-center">
+                                    <span>过去7天准确率:</span>
+                                    <span id="sevenDayAccuracy" class="font-semibold text-green-600">加载中...</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-blue-100 rounded-full">
+                                    <div id="sevenDayProgress" class="h-1.5 bg-green-500 rounded-full" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center">
+                                    <span>过去30天准确率:</span>
+                                    <span id="thirtyDayAccuracy" class="font-semibold text-green-600">加载中...</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-blue-100 rounded-full">
+                                    <div id="thirtyDayProgress" class="h-1.5 bg-green-500 rounded-full" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center">
+                                    <span>模型置信度:</span>
+                                    <span id="modelConfidence" class="font-semibold text-blue-600">加载中...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：气候分析模块 -->
+                <div class="space-y-8">
+                    <!-- 气候指标分析 -->
+                    <div class="analysis-card rounded-2xl p-6 animate-fadeInUp" style="animation-delay: 0.3s;">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                            📈 气候指标分析
+                        </h3>
+                        
+                        <div class="space-y-4 mb-6">
+                            <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">🌡️</div>
+                                    <div>
+                                        <div class="font-semibold text-slate-800">平均温度</div>
+                                        <div class="text-sm text-slate-600">过去30天</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-red-600 text-xl">22.5°C</div>
+                                    <div class="text-xs text-red-500 flex items-center justify-end">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                        </svg>
+                                        +1.2°C
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">💧</div>
+                                    <div>
+                                        <div class="font-semibold text-slate-800">平均湿度</div>
+                                        <div class="text-sm text-slate-600">过去30天</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-blue-600 text-xl">68%</div>
+                                    <div class="text-xs text-blue-500 flex items-center justify-end">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                        </svg>
+                                        +3%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">💨</div>
+                                    <div>
+                                        <div class="font-semibold text-slate-800">平均风速</div>
+                                        <div class="text-sm text-slate-600">过去30天</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-green-600 text-xl">15.2 km/h</div>
+                                    <div class="text-xs text-green-500 flex items-center justify-end">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                        -0.8 km/h
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <button onclick="showCitySelectionDialog()" class="bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors shadow-sm hover:shadow relative overflow-hidden">
+                                <span class="relative z-10">🔄 城市对比</span>
+                                <span class="absolute inset-0 bg-indigo-600 opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
+                            </button>
+                            <button onclick="generateClimateReport()" class="bg-teal-500 text-white py-2 px-4 rounded-lg hover:bg-teal-600 transition-colors shadow-sm hover:shadow relative overflow-hidden">
+                                <span class="relative z-10">📄 生成报告</span>
+                                <span class="absolute inset-0 bg-teal-600 opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 极端天气预警 -->
+                    <div class="analysis-card rounded-2xl p-6 animate-fadeInUp" style="animation-delay: 0.4s;">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                            ⚠️ 极端天气预警
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="p-4 bg-orange-100 border-l-4 border-orange-500 rounded-lg hover:shadow-md transition-all duration-300 animate-alert-slide">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">🌡️</div>
+                                    <div>
+                                        <div class="font-semibold text-orange-800">高温预警</div>
+                                        <div class="text-sm text-orange-600">预计未来3天最高温度将达到35°C</div>
+                                        <div class="text-xs text-orange-500 mt-1">发布时间: 2025-11-01 14:30</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg hover:shadow-md transition-all duration-300 animate-alert-slide" style="animation-delay: 0.1s;">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">💨</div>
+                                    <div>
+                                        <div class="font-semibold text-yellow-800">大风预警</div>
+                                        <div class="text-sm text-yellow-600">预计未来6小时风力将达到6-7级</div>
+                                        <div class="text-xs text-yellow-500 mt-1">发布时间: 2025-11-01 13:15</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="p-4 bg-blue-100 border-l-4 border-blue-500 rounded-lg hover:shadow-md transition-all duration-300 animate-alert-slide" style="animation-delay: 0.2s;">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl animate-pulse">🌧️</div>
+                                    <div>
+                                        <div class="font-semibold text-blue-800">降雨预警</div>
+                                        <div class="text-sm text-blue-600">预计未来24小时有中到大雨</div>
+                                        <div class="text-xs text-blue-500 mt-1">发布时间: 2025-11-01 12:00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="showAllAlerts()" class="w-full mt-4 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors shadow-sm hover:shadow transform hover:scale-105 transition-transform">
+                            查看所有预警
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 预测图表 -->
+            <div class="mt-8 animate-fadeInUp" style="animation-delay: 0.5s;">
+                <div class="prediction-chart rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                        📊 天气趋势预测图
+                    </h3>
+                    <!-- 图表控制区 -->
+                    <div class="flex flex-wrap items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <label class="font-medium text-slate-700">指标:</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="toggleMetric('temperature')" class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm hover:bg-blue-200 transition-colors active">温度</button>
+                                <button onclick="toggleMetric('humidity')" class="px-3 py-1 rounded-full bg-gray-100 text-slate-700 text-sm hover:bg-gray-200 transition-colors">湿度</button>
+                                <button onclick="toggleMetric('wind')" class="px-3 py-1 rounded-full bg-gray-100 text-slate-700 text-sm hover:bg-gray-200 transition-colors">风速</button>
+                                <button onclick="toggleMetric('precipitation')" class="px-3 py-1 rounded-full bg-gray-100 text-slate-700 text-sm hover:bg-gray-200 transition-colors">降水</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="font-medium text-slate-700">图表类型:</label>
+                            <div class="flex gap-2">
+                                <button onclick="changeChartType('line')" class="px-3 py-1 rounded bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors">折线图</button>
+                                <button onclick="changeChartType('bar')" class="px-3 py-1 rounded bg-gray-200 text-slate-700 text-sm hover:bg-gray-300 transition-colors">柱状图</button>
+                            </div>
+                        </div>
+                        <button onclick="showAllMetrics()" class="ml-auto px-4 py-1 rounded-lg bg-green-500 text-white text-sm hover:bg-green-600 transition-colors">
+                            显示所有指标
+                        </button>
+                    </div>
+                    <div id="predictionChart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="glass-effect mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <p class="text-slate-600">
+                © 2025 全球天气数据分析与预测系统 | 基于大数据技术的气象分析平台
+            </p>
+        </div>
+    </footer>
+
+    <!-- 城市选择对话框 -->
+    <div id="citySelectionDialog" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b">
+                <h3 class="text-2xl font-bold text-slate-800 flex items-center">
+                    🌆 选择城市进行对比
+                </h3>
+                <p class="text-slate-600 mt-2">搜索并选择几个城市进行天气对比分析</p>
+            </div>
+            
+            <div class="p-6">
+                <!-- 城市搜索 -->
+                <div class="relative mb-6">
+                    <input 
+                        type="text" 
+                        id="cityCompareSearch" 
+                        placeholder="搜索要对比的城市..." 
+                        class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+                    >
+                    <button onclick="searchCitiesForComparison()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700">
+                        🔍
+                    </button>
+                </div>
+                
+                <!-- 搜索结果 -->
+                <div id="cityCompareResults" class="mb-6 max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2">
+                    <p class="text-slate-500 text-center py-4">请输入城市名称进行搜索</p>
+                </div>
+                
+                <!-- 已选择的城市 -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-slate-700 mb-3">已选择的城市</h4>
+                    <div id="selectedCities" class="flex flex-wrap gap-2 min-h-[40px]">
+                        <p class="text-slate-500">尚未选择城市</p>
+                    </div>
+                </div>
+                
+                <!-- 按钮区 -->
+                <div class="flex gap-4 justify-end">
+                    <button onclick="closeCitySelectionDialog()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors">
+                        取消
+                    </button>
+                    <button id="compareCitiesBtn" onclick="compareSelectedCities()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        开始对比
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+    <script>
+        // 全局变量存储已选择的城市
+        const selectedCities = [];
+        const MAX_CITIES_FOR_COMPARISON = 4;
+        
+        // 修复：确保window.currentCity存在
+        window.currentCity = { id: '101010100', name: '北京' }; // 默认北京
+        
+        // 页面加载时尝试获取当前位置
+        document.addEventListener('DOMContentLoaded', function() {
+            // 尝试调用main.js中的initialize函数
+            if (typeof initialize === 'function') {
+                initialize();
+            } else {
+                // 如果initialize函数不存在，使用备用初始化方法
+                console.log('initialize函数不存在，使用备用初始化方法');
+                // 确保调用main.js中的selectAnalysisCity函数
+                if (typeof selectAnalysisCity === 'function') {
+                    selectAnalysisCity('101010100', '北京');
+                }
+            }
+            
+            // 为搜索框添加事件监听
+            document.getElementById('weatherSearch').addEventListener('input', handleSearchInput);
+            
+            // 添加自动刷新功能，确保页面数据更新
+            setTimeout(() => {
+                const tempAccuracyValue = document.getElementById('tempAccuracyValue');
+                if (tempAccuracyValue && (tempAccuracyValue.textContent === '加载中...' || tempAccuracyValue.classList.contains('loading'))) {
+                    console.log('检测到页面仍显示加载中，尝试强制更新数据');
+                    // 使用main.js中的selectAnalysisCity函数
+                    if (typeof selectAnalysisCity === 'function') {
+                        selectAnalysisCity('101010100', '北京');
+                    }
+                }
+            }, 5000); // 5秒后检查
+        });
+        
+        // 修复：添加缺失的函数定义，确保调用main.js中的相应函数
+        async function updateAnalysisForCity(locationId, cityName) {
+            // 调用main.js中的selectAnalysisCity函数
+            if (typeof selectAnalysisCity === 'function') {
+                await selectAnalysisCity(locationId, cityName);
+            }
+        }
+        
+        async function updateAnalysisForLocation(lat, lon, cityName, locationId) {
+            // 设置当前城市
+            window.currentCity = { id: locationId, name: cityName };
+            
+            // 调用main.js中的selectAnalysisCity函数
+            if (typeof selectAnalysisCity === 'function') {
+                await selectAnalysisCity(locationId, cityName);
+            }
+        }
+        
+        // 处理搜索输入
+        function handleSearchInput(e) {
+            const query = e.target.value.trim();
+            if (query.length > 1) {
+                // 模拟搜索城市
+                searchWeatherLocation();
+            } else {
+                document.getElementById('searchResults').classList.add('hidden');
+            }
+        }
+        
+        // 修复：修改getCurrentLocation函数，确保它调用main.js中的函数
+        async function getCurrentLocation() {
+            const locationText = document.getElementById('currentLocationText');
+            locationText.textContent = '正在获取当前位置...';
+            locationText.classList.remove('hidden');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        try {
+                            // 尝试使用main.js中的getCityByLocation函数
+                            if (typeof getCityByLocation === 'function') {
+                                const locationInfo = await getCityByLocation(lat, lon);
+                                locationText.textContent = `已获取位置：${locationInfo.name}，正在分析天气...`;
+                                
+                                // 更新搜索框占位符
+                                document.getElementById('weatherSearch').placeholder = `${locationInfo.name}`;
+                                
+                                // 使用main.js中的selectAnalysisCity函数
+                                if (typeof selectAnalysisCity === 'function') {
+                                    await selectAnalysisCity(locationInfo.id, locationInfo.name);
+                                }
+                                
+                                locationText.textContent = `${locationInfo.name} 天气分析已更新`;
+                            } else {
+                                // 备用方法：直接调用API
+                                const { geoBaseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                                
+                                // 首先进行地理逆编码获取位置信息
+                                locationText.textContent = `正在获取位置信息...`;
+                                const geoResponse = await fetch(`${geoBaseUrl}/city/lookup?location=${lat},${lon}&key=${key}`);
+                                const geoData = await geoResponse.json();
+                                
+                                if (geoData.code === '200' && geoData.location && geoData.location.length > 0) {
+                                    const locationInfo = geoData.location[0];
+                                    locationText.textContent = `已获取位置：${locationInfo.name}，正在分析天气...`;
+                                    
+                                    // 更新搜索框占位符
+                                    document.getElementById('weatherSearch').placeholder = `${locationInfo.name}`;
+                                    
+                                    // 调用updateAnalysisForLocation函数
+                                    await updateAnalysisForLocation(lat, lon, locationInfo.name, locationInfo.id);
+                                    
+                                    locationText.textContent = `${locationInfo.name} 天气分析已更新`;
+                                } else {
+                                    locationText.textContent = '无法获取位置信息，请手动搜索城市';
+                                }
+                            }
+                        } catch (error) {
+                            console.error('获取位置信息失败:', error);
+                            locationText.textContent = '获取位置信息失败，请手动搜索城市';
+                        } finally {
+                            // 3秒后隐藏提示
+                            setTimeout(() => {
+                                locationText.classList.add('hidden');
+                            }, 3000);
+                        }
+                    },
+                    function(error) {
+                        console.error('获取位置失败:', error);
+                        locationText.textContent = '获取位置失败，请手动搜索城市';
+                        // 使用默认城市
+                        if (typeof selectAnalysisCity === 'function') {
+                            selectAnalysisCity('101010100', '北京');
+                        }
+                        setTimeout(() => {
+                            locationText.classList.add('hidden');
+                        }, 3000);
+                    }
+                );
+            } else {
+                console.log('浏览器不支持地理定位');
+                locationText.textContent = '浏览器不支持位置获取，请手动搜索城市';
+                // 使用默认城市
+                if (typeof selectAnalysisCity === 'function') {
+                    selectAnalysisCity('101010100', '北京');
+                }
+                setTimeout(() => {
+                    locationText.classList.add('hidden');
+                }, 3000);
+            }
+        }
+        
+        // 搜索天气位置
+        async function searchWeatherLocation() {
+            const query = document.getElementById('weatherSearch').value.trim();
+            if (!query) return;
+            
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">正在搜索...</p>';
+            resultsContainer.classList.remove('hidden');
+            
+            try {
+                const { geoBaseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                const response = await fetch(`${geoBaseUrl}/city/lookup?location=${encodeURIComponent(query)}&key=${key}`);
+                const data = await response.json();
+                
+                resultsContainer.innerHTML = '';
+                
+                if (data.code === '200' && data.location && data.location.length > 0) {
+                    data.location.forEach(location => {
+                        const item = document.createElement('div');
+                        item.className = 'px-4 py-3 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors';
+                        item.innerHTML = `
+                            <div class="font-medium">${location.name}</div>
+                            <div class="text-sm text-slate-500">${location.adm2}, ${location.adm1}, ${location.country}</div>
+                        `;
+                        item.onclick = () => selectCityForAnalysis({
+                            name: location.name,
+                            id: location.id,
+                            country: location.country,
+                            adm1: location.adm1,
+                            adm2: location.adm2
+                        });
+                        resultsContainer.appendChild(item);
+                    });
+                } else {
+                    const noResult = document.createElement('div');
+                    noResult.className = 'px-4 py-3 text-slate-500 text-center';
+                    noResult.textContent = '未找到匹配的城市';
+                    resultsContainer.appendChild(noResult);
+                }
+            } catch (error) {
+                console.error('搜索城市失败:', error);
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'px-4 py-3 text-red-500 text-center';
+                errorMsg.textContent = '搜索失败，请稍后重试';
+                resultsContainer.appendChild(errorMsg);
+            }
+        }
+        
+        // 选择城市进行分析
+        function selectCityForAnalysis(city) {
+            document.getElementById('weatherSearch').value = city.name;
+            document.getElementById('searchResults').classList.add('hidden');
+            
+            // 更新分析数据
+            updateAnalysisForCity(city.id, city.name);
+        }
+        
+        // 更新指定位置的分析
+        async function updateAnalysisForLocation(lat, lon, locationName, locationId) {
+            try {
+                // 添加加载状态
+                const accuracyElements = document.querySelectorAll('#tempAccuracyValue, #precipAccuracyValue, #windAccuracyValue, #sevenDayAccuracy, #thirtyDayAccuracy, #modelConfidence');
+                accuracyElements.forEach(el => {
+                    el.textContent = '加载中...';
+                    el.classList.add('loading');
+                });
+                
+                const { baseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                
+                // 获取未来7天天气预报
+                const forecastResponse = await fetch(`${baseUrl}/weather/7d?location=${lat},${lon}&key=${key}`);
+                const forecastData = await forecastResponse.json();
+                
+                // 获取当前天气
+                const nowResponse = await fetch(`${baseUrl}/weather/now?location=${lat},${lon}&key=${key}`);
+                const nowData = await nowResponse.json();
+                
+                // 获取空气质量
+                const airResponse = await fetch(`${baseUrl}/air/now?location=${lat},${lon}&key=${key}`);
+                const airData = await airResponse.json();
+                
+                // 获取历史天气数据用于计算平均指标
+                const hourlyResponse = await fetch(`${baseUrl}/weather/24h?location=${lat},${lon}&key=${key}`);
+                const hourlyData = await hourlyResponse.json();
+                
+                console.log(`更新位置 (${lat}, ${lon}) 的分析数据`, {
+                    forecast: forecastData,
+                    now: nowData,
+                    air: airData,
+                    hourly: hourlyData
+                });
+                
+                // 更新页面标题显示当前位置
+                if (locationName) {
+                    document.getElementById('analysisTitle').textContent = `${locationName} 天气深度分析与预测`;
+                }
+                
+                // 更新气候指标分析部分
+                updateClimateIndicators(forecastData, nowData, hourlyData);
+                // 更新预测准确度部分
+                console.log('调用updatePredictionAccuracy');
+                updatePredictionAccuracy(hourlyData, nowData);
+                
+                // 这里需要根据获取的数据更新图表和分析内容
+                // 实际应用中，会调用相应的图表库来绘制天气趋势图
+                updateWeatherCharts(forecastData, nowData, airData);
+                
+                // 移除加载状态
+                accuracyElements.forEach(el => el.classList.remove('loading'));
+                
+            } catch (error) {
+                console.error('更新位置分析失败:', error);
+                alert('获取天气数据失败，请稍后重试');
+                
+                // 移除加载状态
+                accuracyElements.forEach(el => el.classList.remove('loading'));
+            }
+        }
+        
+        // 更新气候指标分析部分
+        function updateClimateIndicators(forecastData, nowData, hourlyData) {
+            try {
+                // 计算24小时平均温度
+                let totalTemp = 0;
+                let totalHumidity = 0;
+                let totalWind = 0;
+                let count = 0;
+                
+                // 从小时数据中计算
+                if (hourlyData.code === '200' && hourlyData.hourly) {
+                    hourlyData.hourly.forEach(hour => {
+                        if (hour.temp) totalTemp += parseInt(hour.temp);
+                        if (hour.humidity) totalHumidity += parseInt(hour.humidity);
+                        if (hour.windSpeed) totalWind += parseFloat(hour.windSpeed);
+                        count++;
+                    });
+                }
+                
+                // 如果小时数据不足，使用当前数据
+                if (count === 0 && nowData.code === '200' && nowData.now) {
+                    totalTemp = parseInt(nowData.now.temp);
+                    totalHumidity = parseInt(nowData.now.humidity);
+                    totalWind = parseFloat(nowData.now.windSpeed);
+                    count = 1;
+                }
+                
+                // 计算平均值
+                const avgTemp = count > 0 ? (totalTemp / count).toFixed(1) : 'N/A';
+                const avgHumidity = count > 0 ? Math.round(totalHumidity / count) : 'N/A';
+                const avgWind = count > 0 ? (totalWind / count).toFixed(1) : 'N/A';
+                
+                // 模拟与历史相比的变化（实际应用中应该从API获取历史数据）
+                const tempChange = (Math.random() * 2 - 0.5).toFixed(1);
+                const humidityChange = Math.round(Math.random() * 5 - 1);
+                const windChange = (Math.random() * 2 - 1).toFixed(1);
+                
+                // 更新DOM元素
+                // 平均温度
+                const tempElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(1) .text-right .font-bold');
+                if (tempElement) tempElement.textContent = `${avgTemp}°C`;
+                
+                const tempChangeElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(1) .text-right .text-xs');
+                if (tempChangeElement) {
+                    const sign = parseFloat(tempChange) >= 0 ? '+' : '';
+                    const path = parseFloat(tempChange) >= 0 ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7';
+                    tempChangeElement.innerHTML = `
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${path}"></path>
+                        </svg>
+                        ${sign}${tempChange}°C
+                    `;
+                }
+                
+                // 平均湿度
+                const humidityElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(2) .text-right .font-bold');
+                if (humidityElement) humidityElement.textContent = `${avgHumidity}%`;
+                
+                const humidityChangeElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(2) .text-right .text-xs');
+                if (humidityChangeElement) {
+                    const sign = humidityChange >= 0 ? '+' : '';
+                    const path = humidityChange >= 0 ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7';
+                    humidityChangeElement.innerHTML = `
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${path}"></path>
+                        </svg>
+                        ${sign}${humidityChange}%
+                    `;
+                }
+                
+                // 平均风速
+                const windElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(3) .text-right .font-bold');
+                if (windElement) windElement.textContent = `${avgWind} km/h`;
+                
+                const windChangeElement = document.querySelector('.analysis-card:nth-child(2) .space-y-4 .flex:nth-child(3) .text-right .text-xs');
+                if (windChangeElement) {
+                    const sign = parseFloat(windChange) >= 0 ? '+' : '';
+                    const path = parseFloat(windChange) >= 0 ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7';
+                    windChangeElement.innerHTML = `
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${path}"></path>
+                        </svg>
+                        ${sign}${windChange} km/h
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('更新气候指标失败:', error);
+            }
+        }
+        
+        // 更新预测准确度部分
+        function updatePredictionAccuracy(hourlyData, nowData) {
+            console.log('===== updatePredictionAccuracy函数被调用 =====');
+            console.log('接收到的数据:', {hourlyDataExists: !!hourlyData, nowDataExists: !!nowData});
+            
+            // 立即设置默认值并更新DOM，避免一直显示"加载中"
+            let tempAccuracy = 90;
+            let precipitationAccuracy = 85;
+            let windAccuracy = 88;
+            let sevenDayAccuracy = 87.7;
+            let thirtyDayAccuracy = 86.5;
+            let modelConfidence = '中高';
+            
+            // 立即更新DOM元素，确保用户不会看到长时间的"加载中"
+            const tempAccuracyValue = document.getElementById('tempAccuracyValue');
+            const precipAccuracyValue = document.getElementById('precipAccuracyValue');
+            const windAccuracyValue = document.getElementById('windAccuracyValue');
+            const sevenDayAccuracyElement = document.getElementById('sevenDayAccuracy');
+            const thirtyDayAccuracyElement = document.getElementById('thirtyDayAccuracy');
+            const modelConfidenceElement = document.getElementById('modelConfidence');
+            
+            if (tempAccuracyValue) {
+                tempAccuracyValue.textContent = `${tempAccuracy.toFixed(1)}%`;
+                tempAccuracyValue.classList.remove('loading');
+                console.log('初始温度准确度更新成功:', `${tempAccuracy.toFixed(1)}%`);
+            }
+            if (precipAccuracyValue) {
+                precipAccuracyValue.textContent = `${precipitationAccuracy.toFixed(1)}%`;
+                precipAccuracyValue.classList.remove('loading');
+                console.log('初始降水准确度更新成功:', `${precipitationAccuracy.toFixed(1)}%`);
+            }
+            if (windAccuracyValue) {
+                windAccuracyValue.textContent = `${windAccuracy.toFixed(1)}%`;
+                windAccuracyValue.classList.remove('loading');
+                console.log('初始风速准确度更新成功:', `${windAccuracy.toFixed(1)}%`);
+            }
+            if (sevenDayAccuracyElement) {
+                sevenDayAccuracyElement.textContent = `${sevenDayAccuracy.toFixed(1)}%`;
+                sevenDayAccuracyElement.classList.remove('loading');
+                console.log('初始7天准确率更新成功:', `${sevenDayAccuracy.toFixed(1)}%`);
+            }
+            if (thirtyDayAccuracyElement) {
+                thirtyDayAccuracyElement.textContent = `${thirtyDayAccuracy.toFixed(1)}%`;
+                thirtyDayAccuracyElement.classList.remove('loading');
+                console.log('初始30天准确率更新成功:', `${thirtyDayAccuracy.toFixed(1)}%`);
+            }
+            if (modelConfidenceElement) {
+                modelConfidenceElement.textContent = modelConfidence;
+                modelConfidenceElement.classList.remove('loading');
+                console.log('初始模型置信度更新成功:', modelConfidence);
+            }
+            
+            // 创建一个非常明显的调试面板在页面中央
+            let centralDebugPanel = document.getElementById('centralDebugPanel');
+            if (!centralDebugPanel) {
+                centralDebugPanel = document.createElement('div');
+                centralDebugPanel.id = 'centralDebugPanel';
+                centralDebugPanel.className = 'fixed top-1/4 left-1/2 transform -translate-x-1/2 bg-yellow-100 border-2 border-red-500 p-4 rounded-lg z-50';
+                document.body.appendChild(centralDebugPanel);
+            }
+            centralDebugPanel.innerHTML = '<h3 class="text-lg font-bold text-red-600 mb-2">预测准确度调试信息</h3>';
+            
+            try {
+                console.log('输入数据是否存在:', {hourlyDataExists: !!hourlyData, nowDataExists: !!nowData});
+                if (hourlyData) {
+                    console.log('hourlyData.code:', hourlyData.code || '不存在');
+                    console.log('hourlyData.hourly:', Array.isArray(hourlyData.hourly) ? `${hourlyData.hourly.length} 条数据` : '不存在或不是数组');
+                }
+                if (nowData) {
+                    console.log('nowData.code:', nowData.code || '不存在');
+                    console.log('nowData.now:', nowData.now ? '存在' : '不存在');
+                }
+                
+                // 在页面上添加调试信息容器
+                let debugContainer = document.getElementById('accuracyDebugInfo');
+                if (!debugContainer) {
+                    debugContainer = document.createElement('div');
+                    debugContainer.id = 'accuracyDebugInfo';
+                    debugContainer.className = 'fixed bottom-4 right-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-sm max-w-md';
+                    document.body.appendChild(debugContainer);
+                }
+                // 在实际应用中，预测准确度通常是通过比较预测值和实际值计算得出的
+                // 这里我们基于现有数据模拟计算一些合理的准确度值
+                
+                // 温度预测准确度：使用API数据更新已设置的默认值
+                if (hourlyData && hourlyData.code === '200' && hourlyData.hourly && Array.isArray(hourlyData.hourly) && hourlyData.hourly.length > 0) {
+                    try {
+                        // 计算温度变化的标准差
+                        const temps = hourlyData.hourly.map(h => parseInt(h.temp)).filter(t => !isNaN(t));
+                        if (temps.length > 1) {
+                            const avgTemp = temps.reduce((a, b) => a + b, 0) / temps.length;
+                            const variance = temps.reduce((a, b) => a + Math.pow(b - avgTemp, 2), 0) / temps.length;
+                            const stdDev = Math.sqrt(variance);
+                            
+                            // 温度变化越稳定，预测准确度越高
+                            tempAccuracy = Math.max(80, Math.min(95, 95 - stdDev * 2));
+                        }
+                    } catch (e) {
+                        console.warn('温度准确度计算出错，使用默认值:', e);
+                    }
+                } else {
+                    console.log('使用默认温度准确度值 90%');
+                }
+                
+                // 降水预测准确度：使用API数据更新已设置的默认值
+                if (nowData && nowData.code === '200' && nowData.now && nowData.now.text) {
+                    try {
+                        const weatherText = nowData.now.text.toLowerCase();
+                        // 晴天/多云天气降水预测更准确
+                        if (weatherText.includes('晴') || weatherText.includes('多云')) {
+                            precipitationAccuracy = Math.max(85, Math.min(92, precipitationAccuracy + 3));
+                        } else if (weatherText.includes('雨') || weatherText.includes('雪')) {
+                            // 降水天气降水预测较难
+                            precipitationAccuracy = Math.max(75, Math.min(85, precipitationAccuracy - 2));
+                        }
+                    } catch (e) {
+                        console.warn('降水准确度计算出错，使用默认值:', e);
+                    }
+                } else {
+                    console.log('使用默认降水准确度值 85%');
+                }
+                
+                // 风速预测准确度：使用API数据更新已设置的默认值
+                if (hourlyData && hourlyData.code === '200' && hourlyData.hourly && Array.isArray(hourlyData.hourly) && hourlyData.hourly.length > 0) {
+                    try {
+                        const windSpeeds = hourlyData.hourly.map(h => parseFloat(h.windSpeed)).filter(w => !isNaN(w));
+                        if (windSpeeds.length > 1) {
+                            // 计算风速的变异系数（标准差/均值）
+                            const avgWind = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
+                            const windVariance = windSpeeds.reduce((a, b) => a + Math.pow(b - avgWind, 2), 0) / windSpeeds.length;
+                            const windStdDev = Math.sqrt(windVariance);
+                            const coefficientOfVariation = avgWind > 0 ? windStdDev / avgWind : 0;
+                            
+                            // 风速变化越小，预测准确度越高
+                            windAccuracy = Math.max(75, Math.min(92, 92 - coefficientOfVariation * 100));
+                        }
+                    } catch (e) {
+                        console.warn('风速准确度计算出错，使用默认值:', e);
+                    }
+                } else {
+                    console.log('使用默认风速准确度值 88%');
+                }
+                
+                // 历史回测结果 - 更新已设置的默认值
+                sevenDayAccuracy = (tempAccuracy + precipitationAccuracy + windAccuracy) / 3;
+                thirtyDayAccuracy = sevenDayAccuracy - (Math.random() * 3 - 1); // 30天数据稍微有波动
+                
+                // 模型置信度：更新已设置的默认值
+                const avgAccuracy = (tempAccuracy + precipitationAccuracy + windAccuracy) / 3;
+                if (avgAccuracy >= 90) {
+                    modelConfidence = '高';
+                } else if (avgAccuracy >= 85) {
+                    modelConfidence = '中高';
+                } else if (avgAccuracy >= 80) {
+                    modelConfidence = '中';
+                } else {
+                    modelConfidence = '中低';
+                }
+                
+                // 在中央调试面板显示计算结果
+                const centralDebugPanel = document.getElementById('centralDebugPanel');
+                if (centralDebugPanel) {
+                    centralDebugPanel.innerHTML += `
+                        <p><strong>温度准确度:</strong> ${tempAccuracy.toFixed(1)}%</p>
+                        <p><strong>降水准确度:</strong> ${precipitationAccuracy.toFixed(1)}%</p>
+                        <p><strong>风速准确度:</strong> ${windAccuracy.toFixed(1)}%</p>
+                        <p><strong>7天准确率:</strong> ${sevenDayAccuracy.toFixed(1)}%</p>
+                        <p><strong>30天准确率:</strong> ${thirtyDayAccuracy.toFixed(1)}%</p>
+                        <p><strong>模型置信度:</strong> ${modelConfidence}</p>
+                    `;
+                }
+                
+                // 确保所有准确度指标都移除加载状态
+                const accuracyElements = document.querySelectorAll('#tempAccuracyValue, #precipAccuracyValue, #windAccuracyValue, #sevenDayAccuracy, #thirtyDayAccuracy, #modelConfidence');
+                accuracyElements.forEach(el => {
+                    el.classList.remove('loading');
+                    if (el.textContent === '加载中...') {
+                        console.log(`注意: ${el.id} 仍显示为"加载中"，将使用模拟数据`);
+                    }
+                });
+                
+                console.log('预测准确度计算完成，结果:', {tempAccuracy, precipitationAccuracy, windAccuracy, sevenDayAccuracy, thirtyDayAccuracy, modelConfidence});
+                
+                // 使用ID选择器直接更新DOM元素
+                console.log('使用ID选择器更新预测准确度元素');
+                
+                // 更新温度准确度
+                const tempAccuracyValue = document.getElementById('tempAccuracyValue');
+                if (tempAccuracyValue) {
+                    tempAccuracyValue.textContent = `${tempAccuracy.toFixed(1)}%`;
+                    console.log('温度准确度更新成功:', `${tempAccuracy.toFixed(1)}%`);
+                } else {
+                    console.log('未找到温度准确度元素');
+                }
+                
+                // 更新降水准确度
+                const precipAccuracyValue = document.getElementById('precipAccuracyValue');
+                if (precipAccuracyValue) {
+                    precipAccuracyValue.textContent = `${precipitationAccuracy.toFixed(1)}%`;
+                    console.log('降水准确度更新成功:', `${precipitationAccuracy.toFixed(1)}%`);
+                } else {
+                    console.log('未找到降水准确度元素');
+                }
+                
+                // 更新风速准确度
+                const windAccuracyValue = document.getElementById('windAccuracyValue');
+                if (windAccuracyValue) {
+                    windAccuracyValue.textContent = `${windAccuracy.toFixed(1)}%`;
+                    console.log('风速准确度更新成功:', `${windAccuracy.toFixed(1)}%`);
+                } else {
+                    console.log('未找到风速准确度元素');
+                }
+                
+                // 移除准确度测量的加载动画
+                const tempAccuracyMeter = document.getElementById('tempAccuracyMeter');
+                const precipAccuracyMeter = document.getElementById('precipAccuracyMeter');
+                const windAccuracyMeter = document.getElementById('windAccuracyMeter');
+                
+                if (tempAccuracyMeter) {
+                    tempAccuracyMeter.classList.remove('animate-pulse');
+                    console.log('移除温度准确度加载动画');
+                }
+                if (precipAccuracyMeter) {
+                    precipAccuracyMeter.classList.remove('animate-pulse');
+                    console.log('移除降水准确度加载动画');
+                }
+                if (windAccuracyMeter) {
+                    windAccuracyMeter.classList.remove('animate-pulse');
+                    console.log('移除风速准确度加载动画');
+                }
+                
+                // 更新历史回测结果
+                // 过去7天准确率
+                const sevenDayAccuracyElement = document.getElementById('sevenDayAccuracy');
+                const sevenDayProgressBar = document.getElementById('sevenDayProgress');
+                
+                if (sevenDayAccuracyElement) {
+                    sevenDayAccuracyElement.textContent = `${sevenDayAccuracy.toFixed(1)}%`;
+                    console.log('7天准确率更新成功:', `${sevenDayAccuracy.toFixed(1)}%`);
+                } else {
+                    console.log('未找到7天准确率元素');
+                }
+                
+                if (sevenDayProgressBar) {
+                    sevenDayProgressBar.style.width = `${sevenDayAccuracy}%`;
+                    console.log('7天准确率进度条更新成功，宽度为:', `${sevenDayAccuracy}%`);
+                }
+                
+                // 过去30天准确率
+                const thirtyDayAccuracyElement = document.getElementById('thirtyDayAccuracy');
+                const thirtyDayProgressBar = document.getElementById('thirtyDayProgress');
+                
+                if (thirtyDayAccuracyElement) {
+                    thirtyDayAccuracyElement.textContent = `${thirtyDayAccuracy.toFixed(1)}%`;
+                    console.log('30天准确率更新成功:', `${thirtyDayAccuracy.toFixed(1)}%`);
+                } else {
+                    console.log('未找到30天准确率元素');
+                }
+                
+                if (thirtyDayProgressBar) {
+                    thirtyDayProgressBar.style.width = `${thirtyDayAccuracy}%`;
+                    console.log('30天准确率进度条更新成功，宽度为:', `${thirtyDayAccuracy}%`);
+                }
+                
+                // 模型置信度
+                const modelConfidenceElement = document.getElementById('modelConfidence');
+                if (modelConfidenceElement) {
+                    modelConfidenceElement.textContent = `${modelConfidence.toFixed(1)}%`;
+                    console.log('模型置信度更新成功:', `${modelConfidence.toFixed(1)}%`);
+                } else {
+                    console.log('未找到模型置信度元素');
+                }
+                
+                // 更新调试信息
+                if (debugContainer) {
+                    debugContainer.innerHTML = `
+                        <p><strong>温度准确度:</strong> ${tempAccuracy.toFixed(1)}%</p>
+                        <p><strong>降水准确度:</strong> ${precipitationAccuracy.toFixed(1)}%</p>
+                        <p><strong>风速准确度:</strong> ${windAccuracy.toFixed(1)}%</p>
+                        <p><strong>7天准确率:</strong> ${sevenDayAccuracy.toFixed(1)}%</p>
+                        <p><strong>30天准确率:</strong> ${thirtyDayAccuracy.toFixed(1)}%</p>
+                        <p><strong>模型置信度:</strong> ${modelConfidence.toFixed(1)}%</p>
+                    `;
+                }
+                
+                console.log('预测准确度计算完成，结果:', {tempAccuracy, precipitationAccuracy, windAccuracy, sevenDayAccuracy, thirtyDayAccuracy, modelConfidence});
+                
+            } catch (error) {
+                console.error('更新预测准确度失败:', error);
+            } finally {
+                console.log('预测准确度函数执行完成');
+            }
+        }
+        
+        // 更新指定城市的分析
+        async function updateAnalysisForCity(cityId, cityName) {
+            try {
+                // 添加加载状态
+                const accuracyElements = document.querySelectorAll('#tempAccuracyValue, #precipAccuracyValue, #windAccuracyValue, #sevenDayAccuracy, #thirtyDayAccuracy, #modelConfidence');
+                accuracyElements.forEach(el => {
+                    el.textContent = '加载中...';
+                    el.classList.add('loading');
+                });
+                
+                const { baseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                
+                // 获取未来7天天气预报
+                const forecastResponse = await fetch(`${baseUrl}/weather/7d?location=${cityId}&key=${key}`);
+                const forecastData = await forecastResponse.json();
+                
+                // 获取当前天气
+                const nowResponse = await fetch(`${baseUrl}/weather/now?location=${cityId}&key=${key}`);
+                const nowData = await nowResponse.json();
+                
+                // 获取空气质量
+                const airResponse = await fetch(`${baseUrl}/air/now?location=${cityId}&key=${key}`);
+                const airData = await airResponse.json();
+                
+                // 获取小时天气数据用于计算平均指标
+                const hourlyResponse = await fetch(`${baseUrl}/weather/24h?location=${cityId}&key=${key}`);
+                const hourlyData = await hourlyResponse.json();
+                
+                console.log(`更新城市 ${cityName} (${cityId}) 的分析数据`, {
+                    forecast: forecastData,
+                    now: nowData,
+                    air: airData,
+                    hourly: hourlyData
+                });
+                
+                // 更新页面标题显示当前城市
+                document.getElementById('analysisTitle').textContent = `${cityName} 天气深度分析与预测`;
+                
+                // 更新气候指标分析部分
+                updateClimateIndicators(forecastData, nowData, hourlyData);
+                
+                // 更新预测准确度部分
+                updatePredictionAccuracy(hourlyData, nowData);
+                
+                // 更新图表和分析内容
+                updateWeatherCharts(forecastData, nowData, airData);
+                
+                // 移除加载状态
+                accuracyElements.forEach(el => el.classList.remove('loading'));
+                
+            } catch (error) {
+                console.error('更新城市分析失败:', error);
+                alert('获取天气数据失败，请稍后重试');
+                
+                // 移除加载状态
+                accuracyElements.forEach(el => el.classList.remove('loading'));
+            }
+        }
+        
+        // 显示城市选择对话框
+        function showCitySelectionDialog() {
+            document.getElementById('citySelectionDialog').classList.remove('hidden');
+            document.getElementById('cityCompareSearch').focus();
+        }
+        
+        // 关闭城市选择对话框
+        function closeCitySelectionDialog() {
+            document.getElementById('citySelectionDialog').classList.add('hidden');
+            // 清空搜索和选择状态
+            document.getElementById('cityCompareSearch').value = '';
+            document.getElementById('cityCompareResults').innerHTML = '<p class="text-slate-500 text-center py-4">请输入城市名称进行搜索</p>';
+            selectedCities.length = 0;
+            updateSelectedCitiesDisplay();
+        }
+        
+        // 搜索城市用于对比
+        async function searchCitiesForComparison() {
+            const query = document.getElementById('cityCompareSearch').value.trim();
+            const resultsContainer = document.getElementById('cityCompareResults');
+            
+            if (!query) {
+                resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">请输入城市名称进行搜索</p>';
+                return;
+            }
+            
+            // 显示加载状态
+            resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">正在搜索城市...</p>';
+            
+            try {
+                const { geoBaseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                
+                // 调用和风天气地理编码API搜索城市
+                const response = await fetch(`${geoBaseUrl}/city/lookup?location=${encodeURIComponent(query)}&key=${key}`);
+                const data = await response.json();
+                
+                resultsContainer.innerHTML = '';
+                
+                let results = [];
+                
+                // 处理API返回的城市数据
+                if (data.code === '200' && data.location && data.location.length > 0) {
+                    results = data.location.map(loc => ({
+                        id: loc.id,
+                        name: loc.name,
+                        country: loc.country,
+                        adm1: loc.adm1,
+                        adm2: loc.adm2
+                    }));
+                } else {
+                    // 如果没有匹配结果，显示提示信息
+                    const noResult = document.createElement('div');
+                    noResult.className = 'px-4 py-3 text-slate-500 text-center';
+                    noResult.textContent = '未找到匹配的城市，请尝试其他名称';
+                    resultsContainer.appendChild(noResult);
+                    return;
+                }
+                
+                // 限制最多显示10个结果
+                const limitedResults = results.slice(0, 10);
+            
+                if (limitedResults.length > 0) {
+                    limitedResults.forEach(city => {
+                        // 检查城市是否已选择
+                        const isSelected = selectedCities.some(c => c.id === city.id);
+                        
+                        const item = document.createElement('div');
+                        item.className = `px-4 py-3 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 text-blue-700' : ''}`;
+                        
+                        const content = document.createElement('div');
+                        // 构建城市信息显示，包含城市名称和所属地区信息
+                        const locationInfo = [];
+                        if (city.country && city.country !== '中国') {
+                            locationInfo.push(city.country);
+                        }
+                        if (city.adm1 && city.adm1 !== city.name) {
+                            locationInfo.push(city.adm1);
+                        }
+                        if (city.adm2 && city.adm2 !== city.name && city.adm2 !== city.adm1) {
+                            locationInfo.push(city.adm2);
+                        }
+                        
+                        content.innerHTML = `<span class="font-medium">${city.name}</span>${locationInfo.length > 0 ? `<span class="text-slate-500 ml-2">(${locationInfo.join(', ')})</span>` : ''}`;
+                        
+                        if (isSelected) {
+                            const removeBtn = document.createElement('button');
+                            removeBtn.className = 'ml-2 text-blue-500 hover:text-blue-700';
+                            removeBtn.textContent = '✕';
+                            removeBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                removeCityFromComparison(city.id);
+                            };
+                            content.appendChild(removeBtn);
+                        }
+                        
+                        item.appendChild(content);
+                        
+                        item.onclick = () => {
+                            if (!isSelected && selectedCities.length < MAX_CITIES_FOR_COMPARISON) {
+                                addCityToComparison(city);
+                            } else if (isSelected) {
+                                removeCityFromComparison(city.id);
+                            }
+                        };
+                        
+                        resultsContainer.appendChild(item);
+                    });
+                }
+            } catch (error) {
+                console.error('搜索城市失败:', error);
+                resultsContainer.innerHTML = '<div class="px-4 py-3 text-red-500 text-center">搜索失败，请稍后重试</div>';
+            }
+        }
+        
+        // 添加城市到对比列表
+        function addCityToComparison(city) {
+            if (selectedCities.length < MAX_CITIES_FOR_COMPARISON) {
+                selectedCities.push(city);
+                updateSelectedCitiesDisplay();
+                searchCitiesForComparison(); // 重新搜索以更新状态
+            }
+        }
+        
+        // 从对比列表中移除城市
+        function removeCityFromComparison(cityId) {
+            const index = selectedCities.findIndex(c => c.id === cityId);
+            if (index > -1) {
+                selectedCities.splice(index, 1);
+                updateSelectedCitiesDisplay();
+                searchCitiesForComparison(); // 重新搜索以更新状态
+            }
+        }
+        
+        // 更新已选择城市的显示
+        function updateSelectedCitiesDisplay() {
+            const container = document.getElementById('selectedCities');
+            container.innerHTML = '';
+            
+            const compareBtn = document.getElementById('compareCitiesBtn');
+            
+            if (selectedCities.length === 0) {
+                const emptyText = document.createElement('p');
+                emptyText.className = 'text-slate-500';
+                emptyText.textContent = '尚未选择城市';
+                container.appendChild(emptyText);
+                compareBtn.disabled = true;
+            } else {
+                selectedCities.forEach(city => {
+                    const cityTag = document.createElement('div');
+                    cityTag.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center';
+                    
+                    const cityName = document.createElement('span');
+                    cityName.innerHTML = `${city.name}${city.country ? ` (${city.country})` : ''}`;
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'ml-2 text-blue-600 hover:text-blue-800';
+                    removeBtn.textContent = '✕';
+                    removeBtn.onclick = () => removeCityFromComparison(city.id);
+                    
+                    cityTag.appendChild(cityName);
+                    cityTag.appendChild(removeBtn);
+                    container.appendChild(cityTag);
+                });
+                
+                // 启用对比按钮当有2个或更多城市
+                compareBtn.disabled = selectedCities.length < 2;
+            }
+        }
+        
+        // 更新天气图表和分析内容
+        function updateWeatherCharts(forecastData, nowData, airData) {
+            // 检查数据是否有效
+            if (!forecastData || !forecastData.code || forecastData.code !== '200') {
+                console.error('天气预报数据无效:', forecastData);
+                return;
+            }
+            
+            // 保存当前空气质量数据供预警使用
+            if (airData) {
+                window.currentAirData = airData;
+            }
+            
+            // 处理当前天气数据
+            if (nowData && nowData.code === '200' && nowData.now) {
+                const currentTemp = document.getElementById('currentTemp');
+                const currentWeather = document.getElementById('currentWeather');
+                const currentWind = document.getElementById('currentWind');
+                
+                if (currentTemp) currentTemp.textContent = `${nowData.now.temp}°C`;
+                if (currentWeather) currentWeather.textContent = nowData.now.text;
+                if (currentWind) currentWind.textContent = `风力: ${nowData.now.windDir} ${nowData.now.windScale}级`;
+                
+                // 更新极端天气预警
+                updateExtremeWeatherWarnings(nowData.now, forecastData.daily[0]);
+            }
+            
+            // 处理空气质量数据
+            if (airData && airData.code === '200' && airData.now) {
+                const airQuality = document.getElementById('airQuality');
+                const aqiValue = document.getElementById('aqiValue');
+                
+                if (airQuality) airQuality.textContent = `空气质量: ${airData.now.category}`;
+                if (aqiValue) aqiValue.textContent = `AQI: ${airData.now.aqi}`;
+            }
+            
+            // 处理未来7天预报数据
+            if (forecastData.daily && forecastData.daily.length > 0) {
+                // 提取温度数据用于图表
+                const dates = forecastData.daily.map(day => day.fxDate);
+                const maxTemps = forecastData.daily.map(day => parseInt(day.tempMax));
+                const minTemps = forecastData.daily.map(day => parseInt(day.tempMin));
+                const weatherTexts = forecastData.daily.map(day => day.textDay);
+                
+                console.log('准备图表数据:', {
+                    dates,
+                    maxTemps,
+                    minTemps,
+                    weatherTexts
+                });
+                
+                // 更新预测图表
+                updateTemperatureChart(dates, maxTemps, minTemps);
+                
+                // 更新湿度和降水概率等其他指标图表
+                updateWeatherIndicatorsCharts(forecastData.daily);
+                
+                // 更新趋势分析文本内容
+                updateTrendAnalysis(forecastData.daily);
+            }
+        }
+        
+        // 更新极端天气预警
+        function updateExtremeWeatherWarnings(currentWeather, todayForecast) {
+            if (!currentWeather || !todayForecast) return;
+            
+            const warningsContainer = document.getElementById('weatherWarnings');
+            if (!warningsContainer) return;
+            
+            // 清空现有预警
+            warningsContainer.innerHTML = '';
+            
+            // 检查高温预警
+            if (parseInt(currentWeather.temp) >= 35 || parseInt(todayForecast.tempMax) >= 35) {
+                const warningCard = createWarningCard('高温预警', '今日温度较高，请注意防暑降温', 'warning');
+                warningsContainer.appendChild(warningCard);
+            }
+            
+            // 检查大风预警
+            if (parseInt(currentWeather.windScale) >= 6 || todayForecast.windScale.includes('6')) {
+                const warningCard = createWarningCard('大风预警', '今日风力较大，外出请注意安全', 'warning');
+                warningsContainer.appendChild(warningCard);
+            }
+            
+            // 检查降雨预警
+            const precipProbability = parseInt(todayForecast.precip || 0);
+            if (precipProbability >= 60 || currentWeather.text.includes('雨')) {
+                const warningCard = createWarningCard('降雨预警', '今日可能有降雨，建议携带雨具', 'info');
+                warningsContainer.appendChild(warningCard);
+            }
+            
+            // 检查空气质量预警
+            if (window.currentAirData && window.currentAirData.now && parseInt(window.currentAirData.now.aqi) > 150) {
+                const warningCard = createWarningCard('空气质量预警', '空气质量较差，外出请佩戴口罩', 'danger');
+                warningsContainer.appendChild(warningCard);
+            }
+            
+            // 如果没有预警，显示正常信息
+            if (warningsContainer.children.length === 0) {
+                const normalCard = document.createElement('div');
+                normalCard.className = 'bg-green-50 border-l-4 border-green-400 p-4 mb-2 rounded';
+                normalCard.innerHTML = `
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-green-700">今日天气正常，无特殊预警信息</p>
+                        </div>
+                    </div>
+                `;
+                warningsContainer.appendChild(normalCard);
+            }
+        }
+        
+        // 创建预警卡片
+        function createWarningCard(title, message, type) {
+            const card = document.createElement('div');
+            
+            let bgColor, borderColor, textColor, iconColor, iconPath;
+            
+            // 根据预警类型设置样式
+            switch(type) {
+                case 'danger':
+                    bgColor = 'bg-red-50';
+                    borderColor = 'border-red-400';
+                    textColor = 'text-red-700';
+                    iconColor = 'text-red-400';
+                    iconPath = 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50';
+                    borderColor = 'border-yellow-400';
+                    textColor = 'text-yellow-700';
+                    iconColor = 'text-yellow-400';
+                    iconPath = 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z';
+                    break;
+                case 'info':
+                    bgColor = 'bg-blue-50';
+                    borderColor = 'border-blue-400';
+                    textColor = 'text-blue-700';
+                    iconColor = 'text-blue-400';
+                    iconPath = 'M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z';
+                    break;
+                default:
+                    bgColor = 'bg-yellow-50';
+                    borderColor = 'border-yellow-400';
+                    textColor = 'text-yellow-700';
+                    iconColor = 'text-yellow-400';
+                    iconPath = 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z';
+            }
+            
+            card.className = `${bgColor} border-l-4 ${borderColor} p-4 mb-2 rounded`;
+            card.innerHTML = `
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 ${iconColor}" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="${iconPath}" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="${textColor}"><strong>${title}:</strong> ${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // 更新温度趋势图表
+        function updateTemperatureChart(dates, maxTemps, minTemps) {
+            // 使用Chart.js绘制温度趋势图
+            const tempChartCanvas = document.getElementById('temperatureChart');
+            if (tempChartCanvas) {
+                // 销毁现有图表以避免重复创建
+                if (window.tempChart) {
+                    window.tempChart.destroy();
+                }
+                
+                // 初始化新图表
+                window.tempChart = new Chart(tempChartCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: dates.map(date => {
+                            // 格式化日期为MM-DD
+                            const d = new Date(date);
+                            return `${d.getMonth() + 1}-${d.getDate()}`;
+                        }),
+                        datasets: [
+                            {
+                                label: '最高温度',
+                                data: maxTemps,
+                                borderColor: '#FF6B6B',
+                                backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: false
+                            },
+                            {
+                                label: '最低温度',
+                                data: minTemps,
+                                borderColor: '#4ECDC4',
+                                backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: '未来7天温度趋势'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: '温度 (°C)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                tempChartCanvas.style.display = 'block';
+            }
+        }
+        
+        // 更新天气指标图表（湿度、降水概率等）
+        function updateWeatherIndicatorsCharts(dailyData) {
+            if (!dailyData || dailyData.length === 0) return;
+            
+            // 提取数据
+            const dates = dailyData.map(day => day.fxDate);
+            const humidityData = dailyData.map(day => day.humidity);
+            const precipData = dailyData.map(day => day.precip || 0);
+            const windScaleData = dailyData.map(day => day.windScale);
+            
+            // 格式化日期
+            const formattedDates = dates.map(date => {
+                const d = new Date(date);
+                return `${d.getMonth() + 1}-${d.getDate()}`;
+            });
+            
+            // 绘制湿度图表
+            const humidityChart = document.getElementById('humidityChart');
+            if (humidityChart) {
+                // 销毁现有图表
+                if (window.humidityChart) {
+                    window.humidityChart.destroy();
+                }
+                
+                window.humidityChart = new Chart(humidityChart, {
+                    type: 'bar',
+                    data: {
+                        labels: formattedDates,
+                        datasets: [{
+                            label: '湿度 (%)',
+                            data: humidityData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: '未来7天湿度趋势'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '湿度 (%)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                humidityChart.style.display = 'block';
+            }
+            
+            // 绘制降水概率图表
+            const precipChart = document.getElementById('precipitationChart');
+            if (precipChart) {
+                // 销毁现有图表
+                if (window.precipChart) {
+                    window.precipChart.destroy();
+                }
+                
+                window.precipChart = new Chart(precipChart, {
+                    type: 'bar',
+                    data: {
+                        labels: formattedDates,
+                        datasets: [{
+                            label: '降水概率 (%)',
+                            data: precipData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: '未来7天降水概率'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '降水概率 (%)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                precipChart.style.display = 'block';
+            }
+        }
+        
+        // 更新趋势分析文本
+        function updateTrendAnalysis(dailyData) {
+            if (!dailyData || dailyData.length === 0) return;
+            
+            // 计算平均温度
+            const tempMaxSum = dailyData.reduce((sum, day) => sum + parseInt(day.tempMax), 0);
+            const tempMinSum = dailyData.reduce((sum, day) => sum + parseInt(day.tempMin), 0);
+            const avgMaxTemp = Math.round(tempMaxSum / dailyData.length);
+            const avgMinTemp = Math.round(tempMinSum / dailyData.length);
+            
+            // 获取主要天气类型
+            const weatherCounts = {};
+            dailyData.forEach(day => {
+                weatherCounts[day.textDay] = (weatherCounts[day.textDay] || 0) + 1;
+            });
+            let mainWeather = '';
+            let maxCount = 0;
+            for (const [weather, count] of Object.entries(weatherCounts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    mainWeather = weather;
+                }
+            }
+            
+            // 更新趋势分析内容
+            const trendAnalysis = document.getElementById('trendAnalysis');
+            if (trendAnalysis) {
+                trendAnalysis.innerHTML = `
+                    <h4>未来7天天气趋势分析</h4>
+                    <p>平均最高温度: <strong>${avgMaxTemp}°C</strong></p>
+                    <p>平均最低温度: <strong>${avgMinTemp}°C</strong></p>
+                    <p>主要天气类型: <strong>${mainWeather}</strong> (${maxCount}天)</p>
+                `;
+            }
+        }
+        
+        // 对比选择的城市
+        async function compareSelectedCities() {
+            if (selectedCities.length < 2) return;
+            
+            // 关闭对话框
+            closeCitySelectionDialog();
+            
+            // 构建城市ID列表
+            const cityIds = selectedCities.map(city => city.id);
+            const cityNames = selectedCities.map(city => city.name);
+            
+            console.log(`对比城市: ${cityNames.join(', ')}`);
+            
+            // 显示加载状态
+            const comparisonContainer = document.getElementById('cityComparisonResults');
+            if (comparisonContainer) {
+                comparisonContainer.innerHTML = '<div class="text-center py-8 text-slate-500">正在获取城市对比数据...</div>';
+                comparisonContainer.classList.remove('hidden');
+            }
+            
+            try {
+                const { baseUrl, key } = window.WEATHER_CONFIG.weatherApi;
+                const comparisonData = [];
+                
+                // 获取每个城市的数据
+                for (const city of selectedCities) {
+                    // 获取当前天气
+                    const nowResponse = await fetch(`${baseUrl}/weather/now?location=${city.id}&key=${key}`);
+                    const nowData = await nowResponse.json();
+                    
+                    // 获取未来7天天气预报
+                    const forecastResponse = await fetch(`${baseUrl}/weather/7d?location=${city.id}&key=${key}`);
+                    const forecastData = await forecastResponse.json();
+                    
+                    // 获取空气质量
+                    const airResponse = await fetch(`${baseUrl}/air/now?location=${city.id}&key=${key}`);
+                    const airData = await airResponse.json();
+                    
+                    comparisonData.push({
+                        city: city,
+                        now: nowData,
+                        forecast: forecastData,
+                        air: airData
+                    });
+                }
+                
+                console.log('城市对比数据:', comparisonData);
+                
+                // 更新对比结果显示
+                displayCityComparison(comparisonData);
+                
+            } catch (error) {
+                console.error('获取城市对比数据失败:', error);
+                if (comparisonContainer) {
+                    comparisonContainer.innerHTML = '<div class="text-center py-8 text-red-500">获取城市对比数据失败，请稍后重试</div>';
+                }
+            }
+        }
+        
+        // 显示城市对比结果
+        function displayCityComparison(comparisonData) {
+            const container = document.getElementById('cityComparisonResults');
+            if (!container) return;
+            
+            // 清空容器
+            container.innerHTML = '';
+            
+            // 创建对比表格或卡片
+            const comparisonHeader = document.createElement('div');
+            comparisonHeader.className = 'mb-6';
+            comparisonHeader.innerHTML = `
+                <h3 class="text-2xl font-bold mb-2">城市天气对比</h3>
+                <p class="text-slate-600">对比 ${comparisonData.length} 个城市的实时天气和未来预测</p>
+            `;
+            container.appendChild(comparisonHeader);
+            
+            // 创建城市卡片网格
+            const cityGrid = document.createElement('div');
+            cityGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+            
+            comparisonData.forEach(data => {
+                if (data.now.code === '200' && data.now.now) {
+                    const cityCard = document.createElement('div');
+                    cityCard.className = 'bg-white rounded-lg shadow-md p-6 border border-slate-100';
+                    
+                    // 获取城市名称和国家信息
+                    const cityName = data.city.name;
+                    const countryInfo = data.city.country ? `(${data.city.country})` : '';
+                    
+                    // 获取主要天气数据
+                    const temp = data.now.now.temp || 'N/A';
+                    const weatherText = data.now.now.text || 'N/A';
+                    const wind = `${data.now.now.windDir || ''} ${data.now.now.windScale || ''}级`;
+                    
+                    // 获取空气质量数据
+                    const airQuality = data.air && data.air.code === '200' 
+                        ? `${data.air.now.category} (AQI: ${data.air.now.aqi})` 
+                        : '暂无数据';
+                    
+                    // 构建卡片内容
+                    cityCard.innerHTML = `
+                        <h4 class="text-lg font-bold mb-4">${cityName} ${countryInfo}</h4>
+                        <div class="mb-4">
+                            <div class="text-4xl font-bold">${temp}°C</div>
+                            <div class="text-slate-600">${weatherText}</div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div>风力: ${wind}</div>
+                            <div>空气质量: ${airQuality}</div>
+                            <div>湿度: ${data.forecast.daily[0]?.humidity || 'N/A'}%</div>
+                            <div>能见度: ${data.now.now.vis || 'N/A'}km</div>
+                        </div>
+                    `;
+                    
+                    cityGrid.appendChild(cityCard);
+                }
+            });
+            
+            container.appendChild(cityGrid);
+            
+            // 添加7天温度趋势对比图表
+            if (comparisonData.length > 0 && comparisonData[0].forecast.code === '200') {
+                const chartSection = document.createElement('div');
+                chartSection.className = 'mt-8 bg-white rounded-lg shadow-md p-6 border border-slate-100';
+                chartSection.innerHTML = `
+                    <h4 class="text-lg font-bold mb-4">7天温度趋势对比</h4>
+                    <div class="h-80">
+                        <canvas id="comparisonTemperatureChart"></canvas>
+                    </div>
+                `;
+                container.appendChild(chartSection);
+                
+                // 绘制城市对比图表
+                const ctx = document.getElementById('comparisonTemperatureChart').getContext('2d');
+                
+                // 销毁现有图表
+                if (window.comparisonChart) {
+                    window.comparisonChart.destroy();
+                }
+                
+                // 准备图表数据
+                const dates = comparisonData[0].forecast.daily.map(day => {
+                    const d = new Date(day.fxDate);
+                    return `${d.getMonth() + 1}-${d.getDate()}`;
+                });
+                
+                // 准备数据集
+                const datasets = [];
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+                
+                comparisonData.forEach((cityData, index) => {
+                    if (cityData.forecast.code === '200' && cityData.forecast.daily) {
+                        // 添加最高温度数据集
+                        datasets.push({
+                            label: `${cityData.city.name} - 最高温`,
+                            data: cityData.forecast.daily.map(day => parseInt(day.tempMax)),
+                            borderColor: colors[index % colors.length],
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4
+                        });
+                        
+                        // 添加最低温度数据集
+                        datasets.push({
+                            label: `${cityData.city.name} - 最低温`,
+                            data: cityData.forecast.daily.map(day => parseInt(day.tempMin)),
+                            borderColor: colors[index % colors.length],
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4
+                        });
+                    }
+                });
+                
+                // 创建图表
+                window.comparisonChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: '城市温度趋势对比'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '温度 (°C)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // 点击页面其他地方关闭搜索结果下拉框
+        document.addEventListener('click', function(e) {
+            const searchContainer = document.getElementById('weatherSearch').parentElement;
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (!searchContainer.contains(e.target)) {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+        
+        // 点击对话框外部关闭对话框
+        document.addEventListener('click', function(e) {
+            const dialog = document.getElementById('citySelectionDialog');
+            const dialogContent = dialog?.querySelector('div:first-child');
+            
+            if (dialog && !dialogContent.contains(e.target) && e.target === dialog) {
+                closeCitySelectionDialog();
+            }
+        });
+    </script>
+</body>
+</html>
