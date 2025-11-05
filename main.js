@@ -142,6 +142,16 @@ window.WeatherApp = window.WeatherApp || {};
     // 初始化函数
     window.WeatherApp.init = function() {
         console.log('天气应用初始化中...');
+        
+        // 检查当前页面是否为about.html
+        const isAboutPage = window.location.pathname.includes('about.html');
+        
+        if (isAboutPage) {
+            console.log('当前为关于页面，跳过位置获取和天气数据加载');
+            // 在about页面只显示模态框功能，不执行其他初始化
+            return;
+        }
+        
         // 初始化热门城市列表
         this.initPopularCities();
         
@@ -910,11 +920,12 @@ window.WeatherApp = window.WeatherApp || {};
     // 显示天气预警 - 使用和风天气API获取实时预警信息
     window.WeatherApp.showAlerts = async function() {
         try {
-            const cityId = this.config.currentCity.id;
+            // 使用默认城市ID，不依赖用户位置
+            const cityId = this.config.currentCity.id || '101010100'; // 默认使用北京
             const config = window.WEATHER_CONFIG.weatherApi;
             const url = `${config.baseUrl}/warning/now?location=${cityId}&key=${config.key}`;
             
-            console.log(`获取${this.config.currentCity.name}的天气预警信息`);
+            console.log(`获取预警信息，使用默认城市ID: ${cityId}`);
             
             // 显示加载状态
             const loadingMessage = document.createElement('div');
