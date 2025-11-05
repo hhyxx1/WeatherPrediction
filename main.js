@@ -569,9 +569,9 @@ window.WeatherApp = window.WeatherApp || {};
                 });
                 
                 // 数据扩展处理 - 生成真实连续的时间
-                if ((timeRange === '48h' || timeRange === '72h') && labels.length > 0) {
+                if ((timeRange === '24h' || timeRange === '48h' || timeRange === '72h') && labels.length > 0) {
                     console.log(`扩展数据到${timeRange}`);
-                    const hoursToGenerate = timeRange === '48h' ? 48 : 72;
+                    const hoursToGenerate = timeRange === '24h' ? 24 : (timeRange === '48h' ? 48 : 72);
                     const extendedLabels = [];
                     const extendedValues = [];
                     
@@ -660,160 +660,18 @@ window.WeatherApp = window.WeatherApp || {};
         }
     };
     
-    // 生成符合特定时间范围的模拟数据（非随机）
+    // 不生成任何模拟数据
     window.WeatherApp.generateTimeRangeSpecificData = function(timeRange) {
-        console.log(`generateTimeRangeSpecificData: 生成${timeRange}范围的数据`);
-        
-        // 使用固定的基础值和模式，而不是完全随机
-        const baseValues = {
-            temperature: 20,
-            humidity: 60,
-            pressure: 1013,
-            windSpeed: 12,
-            precipitation: 0
-        };
-        
-        // 获取当前图表类型的基础值
-        const baseValue = baseValues[this.config.currentChartType] || baseValues.temperature;
-        
-        // 根据时间范围确定数据点数量和格式
-        let count, isHourly = true;
-        
-        switch (timeRange) {
-            case '24h':
-                count = 24;
-                isHourly = true;
-                break;
-            case '48h':
-                count = 48;
-                isHourly = true;
-                break;
-            case '72h':
-                count = 72;
-                isHourly = true;
-                break;
-            case '7d':
-                count = 7;
-                isHourly = false;
-                break;
-            case '15d':
-                count = 15;
-                isHourly = false;
-                break;
-            default:
-                count = 24;
-                isHourly = true;
-        }
-        
-        const labels = [];
-        const values = [];
-        const now = new Date();
-        
-        for (let i = 0; i < count; i++) {
-            // 生成标签
-            let label;
-            if (isHourly) {
-                const time = new Date(now.getTime() - (count - 1 - i) * 60 * 60 * 1000);
-                label = `${time.getHours().toString().padStart(2, '0')}:00`;
-            } else {
-                const date = new Date(now.getTime() - (count - 1 - i) * 24 * 60 * 60 * 1000);
-                label = `${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-            }
-            
-            // 生成具有规律模式的值，而不是完全随机
-            // 使用正弦函数生成有规律的波动
-            let value;
-            switch (this.config.currentChartType) {
-                case 'temperature':
-                    // 温度：基于时间的正弦波，模拟昼夜温差
-                    value = Math.round(baseValue + Math.sin(i / 4) * 10 + (i % 6) - 2);
-                    break;
-                case 'humidity':
-                    // 湿度：与温度相反的模式
-                    value = Math.round(baseValue - Math.sin(i / 4) * 15 + (i % 5));
-                    break;
-                case 'pressure':
-                    // 气压：较慢的变化模式
-                    value = Math.round(baseValue + Math.sin(i / 12) * 8);
-                    break;
-                case 'windSpeed':
-                    // 风速：间歇性变化
-                    value = Math.round(baseValue + Math.sin(i / 3) * 10 + (i % 4));
-                    break;
-                case 'precipitation':
-                    // 降水量：主要为0，偶尔有值
-                    value = i % 24 === 0 ? Math.round(Math.random() * 5) : 0;
-                    break;
-                default:
-                    value = Math.round(baseValue + Math.sin(i / 6) * 10);
-            }
-            
-            // 确保值在合理范围内
-            if (this.config.currentChartType === 'temperature' && (value < -10 || value > 45)) {
-                value = baseValue;
-            } else if (this.config.currentChartType === 'humidity' && (value < 10 || value > 100)) {
-                value = baseValue;
-            }
-            
-            labels.push(label);
-            values.push(value);
-        }
-        
-        console.log(`生成了${timeRange}范围的${labels.length}个数据点`);
-        return { hours: labels, values };
+        console.log(`generateTimeRangeSpecificData: 不生成模拟数据，仅返回空数据集`);
+        // 不生成任何模拟数据，返回空的数据集
+        return { hours: [], values: [] };
     };
     
-    // 生成模拟时间数据（作为备用）
+    // 不生成任何模拟数据
     window.WeatherApp.generateMockHours = function() {
-        const timeRange = this.config.currentTimeRange;
-        const labels = [];
-        const now = new Date();
-        
-        switch (timeRange) {
-            case '24h':
-                // 24小时数据，按小时显示
-                for (let i = 23; i >= 0; i--) {
-                    const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
-                    labels.push(`${hour.getHours()}:00`);
-                }
-                break;
-            case '48h':
-                // 48小时数据
-                for (let i = 47; i >= 0; i--) {
-                    const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
-                    labels.push(`${hour.getHours()}:00`);
-                }
-                break;
-            case '72h':
-                // 72小时数据
-                for (let i = 71; i >= 0; i--) {
-                    const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
-                    labels.push(`${hour.getHours()}:00`);
-                }
-                break;
-            case '7d':
-                // 7天数据，按日期显示
-                for (let i = 6; i >= 0; i--) {
-                    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                    labels.push(`${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`);
-                }
-                break;
-            case '15d':
-                // 15天数据，按日期显示
-                for (let i = 14; i >= 0; i--) {
-                    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                    labels.push(`${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`);
-                }
-                break;
-            default:
-                // 默认24小时数据
-                for (let i = 23; i >= 0; i--) {
-                    const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
-                    labels.push(`${hour.getHours()}:00`);
-                }
-        }
-        
-        return labels;
+        console.log(`generateMockHours: 不生成模拟数据，仅返回空数组`);
+        // 不生成任何模拟时间数据，返回空数组
+        return [];
     };
     
     // 生成模拟数据值（作为备用）
