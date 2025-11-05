@@ -222,13 +222,21 @@ window.WeatherApp = window.WeatherApp || {};
     window.WeatherApp.loadCityWeather = async function(cityId, cityName) {
         console.log(`加载${cityName}的天气数据`);
         
-        // 更新选中城市信息
-        document.getElementById('selectedCityName').textContent = cityName;
-        
         // 更新当前时间
         const now = new Date();
         const formattedTime = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        document.getElementById('selectedCityTime').textContent = formattedTime;
+        
+        // 添加DOM元素存在性检查，避免空引用错误
+        const selectedCityNameEl = document.getElementById('selectedCityName');
+        const selectedCityTimeEl = document.getElementById('selectedCityTime');
+        
+        // 只在元素存在时更新内容
+        if (selectedCityNameEl) {
+            selectedCityNameEl.textContent = cityName;
+        }
+        if (selectedCityTimeEl) {
+            selectedCityTimeEl.textContent = formattedTime;
+        }
         
         try {
             const config = window.WEATHER_CONFIG.weatherApi;
@@ -255,17 +263,25 @@ window.WeatherApp = window.WeatherApp || {};
                 aqi: aqiData.now?.aqi || '--'
             };
             
-            // 更新UI显示
-            document.getElementById('selectedCityWeatherIcon').textContent = this.weatherIcons[cityWeather.code] || '🌤️';
-            document.getElementById('selectedCityTemp').textContent = `${cityWeather.temp}°C`;
-            document.getElementById('selectedCityWeather').textContent = cityWeather.text;
+            // 更新UI显示 - 添加DOM元素存在性检查
+            const weatherIconEl = document.getElementById('selectedCityWeatherIcon');
+            const tempEl = document.getElementById('selectedCityTemp');
+            const weatherTextEl = document.getElementById('selectedCityWeather');
+            const humidityEl = document.getElementById('humidity');
+            const windSpeedEl = document.getElementById('windSpeed');
+            const pressureEl = document.getElementById('pressure');
+            const visibilityEl = document.getElementById('visibility');
+            const aqiEl = document.getElementById('aqi');
             
-            // 更新详细指标
-            document.getElementById('humidity').textContent = cityWeather.humidity !== '--' ? `${cityWeather.humidity}%` : '--';
-            document.getElementById('windSpeed').textContent = cityWeather.windSpeed !== '--' ? `${cityWeather.windSpeed} km/h` : '--';
-            document.getElementById('pressure').textContent = cityWeather.pressure !== '--' ? `${cityWeather.pressure} hPa` : '--';
-            document.getElementById('visibility').textContent = cityWeather.visibility !== '--' ? `${cityWeather.visibility} km` : '--';
-            document.getElementById('aqi').textContent = cityWeather.aqi;
+            // 只在元素存在时更新内容
+            if (weatherIconEl) weatherIconEl.textContent = this.weatherIcons[cityWeather.code] || '🌤️';
+            if (tempEl) tempEl.textContent = `${cityWeather.temp}°C`;
+            if (weatherTextEl) weatherTextEl.textContent = cityWeather.text;
+            if (humidityEl) humidityEl.textContent = cityWeather.humidity !== '--' ? `${cityWeather.humidity}%` : '--';
+            if (windSpeedEl) windSpeedEl.textContent = cityWeather.windSpeed !== '--' ? `${cityWeather.windSpeed} km/h` : '--';
+            if (pressureEl) pressureEl.textContent = cityWeather.pressure !== '--' ? `${cityWeather.pressure} hPa` : '--';
+            if (visibilityEl) visibilityEl.textContent = cityWeather.visibility !== '--' ? `${cityWeather.visibility} km` : '--';
+            if (aqiEl) aqiEl.textContent = cityWeather.aqi;
             
             // 存储天气数据
             this.config.weatherData[cityId] = cityWeather;
@@ -273,15 +289,15 @@ window.WeatherApp = window.WeatherApp || {};
         } catch (error) {
             console.error(`获取${cityName}天气数据失败:`, error);
             
-            // 显示默认的"--"值
-            document.getElementById('selectedCityWeatherIcon').textContent = '🌤️';
-            document.getElementById('selectedCityTemp').textContent = '--°C';
-            document.getElementById('selectedCityWeather').textContent = '--';
-            document.getElementById('humidity').textContent = '--';
-            document.getElementById('windSpeed').textContent = '--';
-            document.getElementById('pressure').textContent = '--';
-            document.getElementById('visibility').textContent = '--';
-            document.getElementById('aqi').textContent = '--';
+            // 显示默认的"--"值 - 添加DOM元素存在性检查
+            if (document.getElementById('selectedCityWeatherIcon')) document.getElementById('selectedCityWeatherIcon').textContent = '🌤️';
+            if (document.getElementById('selectedCityTemp')) document.getElementById('selectedCityTemp').textContent = '--°C';
+            if (document.getElementById('selectedCityWeather')) document.getElementById('selectedCityWeather').textContent = '--';
+            if (document.getElementById('humidity')) document.getElementById('humidity').textContent = '--';
+            if (document.getElementById('windSpeed')) document.getElementById('windSpeed').textContent = '--';
+            if (document.getElementById('pressure')) document.getElementById('pressure').textContent = '--';
+            if (document.getElementById('visibility')) document.getElementById('visibility').textContent = '--';
+            if (document.getElementById('aqi')) document.getElementById('aqi').textContent = '--';
         }
         
         // 更新图表
@@ -295,11 +311,22 @@ window.WeatherApp = window.WeatherApp || {};
     // 初始化图表
     window.WeatherApp.initCharts = function() {
         if (typeof echarts !== 'undefined') {
-            this.config.chartInstances.mainChart = echarts.init(document.getElementById('mainChart'));
-            // 调用异步的updateChart函数
-            this.updateChart().catch(error => {
-                console.error('初始化图表失败:', error);
-            });
+            // 初始化mainChart，如果元素存在
+            const mainChartElement = document.getElementById('mainChart');
+            if (mainChartElement) {
+                this.config.chartInstances.mainChart = echarts.init(mainChartElement);
+                // 调用异步的updateChart函数
+                this.updateChart().catch(error => {
+                    console.error('初始化mainChart失败:', error);
+                });
+            }
+            
+            // 避免初始化不存在的predictionChart元素
+            // predictionChart元素可能在analysis.html中，但可能未使用ECharts初始化
+            const predictionChartElement = document.getElementById('predictionChart');
+            if (!predictionChartElement) {
+                console.log('predictionChart元素不存在，跳过初始化');
+            }
         }
     };
     
@@ -355,10 +382,9 @@ window.WeatherApp = window.WeatherApp || {};
                 displayValues = weatherData.values;
                 console.log(`使用获取的数据: 时间标签${displayHours.length}个, 数据值${displayValues.length}个`);
             } else {
-                console.warn('获取的数据无效，使用时间范围特定的备用数据');
-                const fallbackData = this.generateTimeRangeSpecificData(this.config.currentTimeRange);
-                displayHours = fallbackData.hours;
-                displayValues = fallbackData.values;
+                console.warn('获取的数据无效，显示空数据状态');
+                displayHours = [];
+                displayValues = [];
             }
             
             // 更新图表配置
@@ -379,20 +405,23 @@ window.WeatherApp = window.WeatherApp || {};
         } catch (error) {
             console.error('更新图表时出错:', error);
             
-            // 失败时使用时间范围特定的备用数据
+            // 失败时显示空数据状态
             try {
-                console.log('使用时间范围特定的备用数据');
-                const fallbackData = this.generateTimeRangeSpecificData(this.config.currentTimeRange);
+                console.log('显示空数据状态');
                 
                 const fallbackOption = {
                     xAxis: {
-                        data: fallbackData.hours
+                        data: []
                     },
                     series: [{
-                        data: fallbackData.values
+                        data: []
                     }],
                     loading: {
                         show: false
+                    },
+                    title: {
+                        text: this.getChartTitle() + ' - 数据加载失败',
+                        left: 'center'
                     }
                 };
                 
@@ -539,29 +568,79 @@ window.WeatherApp = window.WeatherApp || {};
                     }
                 });
                 
-                // 数据扩展处理
+                // 数据扩展处理 - 生成真实连续的时间
                 if ((timeRange === '48h' || timeRange === '72h') && labels.length > 0) {
                     console.log(`扩展数据到${timeRange}`);
-                    const multiplier = timeRange === '48h' ? 2 : 3;
+                    const hoursToGenerate = timeRange === '48h' ? 48 : 72;
                     const extendedLabels = [];
                     const extendedValues = [];
                     
-                    for (let i = 0; i < multiplier; i++) {
-                        labels.forEach((label, index) => {
-                            extendedLabels.push(i === 0 ? label : `${label}+${i*24}h`);
-                            extendedValues.push(values[index]);
-                        });
+                    // 获取当前时间
+                    const now = new Date();
+                    
+                    // 生成过去hoursToGenerate小时的连续时间
+                    for (let i = hoursToGenerate - 1; i >= 0; i--) {
+                        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+                        const label = `${time.getHours().toString().padStart(2, '0')}:00`;
+                        
+                        // 使用循环索引从原始数据中获取值，确保数据连续性
+                        const valueIndex = i % values.length;
+                        extendedLabels.push(label);
+                        extendedValues.push(values[valueIndex]);
                     }
                     
                     console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
                     return { hours: extendedLabels, values: extendedValues };
                 }
                 
-                // 对于15天范围，扩展7天数据
+                // 对于15天范围，生成真实的15天连续日期
                 if (timeRange === '15d' && labels.length > 0) {
-                    console.log('扩展7天数据到15天');
-                    const extendedLabels = [...labels, ...labels.map(l => `${l}+7d`)];
-                    const extendedValues = [...values, ...values];
+                    console.log('生成真实的15天数据');
+                    const extendedLabels = [];
+                    const extendedValues = [];
+                    
+                    // 获取当前时间
+                    const now = new Date();
+                    
+                    // 生成过去15天的连续日期
+                    for (let i = 14; i >= 0; i--) {
+                        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const label = `${month}-${day}`;
+                        
+                        // 使用循环索引从原始数据中获取值，确保数据连续性
+                        const valueIndex = i % values.length;
+                        extendedLabels.push(label);
+                        extendedValues.push(values[valueIndex]);
+                    }
+                    
+                    console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
+                    return { hours: extendedLabels, values: extendedValues };
+                }
+                
+                // 处理30天范围
+                if (timeRange === '30d' && labels.length > 0) {
+                    console.log('生成真实的30天数据');
+                    const extendedLabels = [];
+                    const extendedValues = [];
+                    
+                    // 获取当前时间
+                    const now = new Date();
+                    
+                    // 生成过去30天的连续日期
+                    for (let i = 29; i >= 0; i--) {
+                        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const label = `${month}-${day}`;
+                        
+                        // 使用循环索引从原始数据中获取值，确保数据连续性
+                        const valueIndex = i % values.length;
+                        extendedLabels.push(label);
+                        extendedValues.push(values[valueIndex]);
+                    }
+                    
                     console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
                     return { hours: extendedLabels, values: extendedValues };
                 }
@@ -570,14 +649,14 @@ window.WeatherApp = window.WeatherApp || {};
                 return { hours: labels, values };
             }
             
-            // API返回数据无效，生成符合时间范围的模拟数据
-            console.log('API返回数据无效，生成时间范围特定的模拟数据');
-            return this.generateTimeRangeSpecificData(timeRange);
+            // API返回数据无效，返回空数据结构
+            console.log('API返回数据无效，返回空数据结构');
+            return { hours: [], values: [] };
         } catch (error) {
             console.error('获取天气历史数据时出错:', error.message);
-            // API调用失败，生成符合时间范围的模拟数据
-            console.log('API调用失败，生成时间范围特定的模拟数据');
-            return this.generateTimeRangeSpecificData(timeRange);
+            // API调用失败，返回空数据结构
+            console.log('API调用失败，返回空数据结构');
+            return { hours: [], values: [] };
         }
     };
     
@@ -848,14 +927,307 @@ window.WeatherApp = window.WeatherApp || {};
         }
     };
     
-    // 导出数据
-    window.WeatherApp.exportData = function() {
-        alert('数据导出功能已触发');
+    // 导出数据功能 - 支持CSV和JSON格式
+    window.WeatherApp.exportData = async function() {
+        try {
+            // 获取当前图表数据
+            console.log('准备导出数据...');
+            const weatherData = await this.fetchWeatherHistory();
+            
+            // 如果没有数据，生成模拟数据
+            let exportData;
+            if (weatherData && weatherData.hours && weatherData.values) {
+                exportData = {
+                    hours: weatherData.hours,
+                    values: weatherData.values,
+                    type: this.config.currentChartType,
+                    timeRange: this.config.currentTimeRange,
+                    city: this.config.currentCity.name,
+                    exportTime: new Date().toLocaleString('zh-CN')
+                };
+                console.log('获取到实际数据，准备导出');
+            } else {
+                // 生成备用数据
+                const fallbackData = this.generateTimeRangeSpecificData(this.config.currentTimeRange);
+                exportData = {
+                    hours: fallbackData.hours,
+                    values: this.generateMockValues(fallbackData.hours.length),
+                    type: this.config.currentChartType,
+                    timeRange: this.config.currentTimeRange,
+                    city: this.config.currentCity.name,
+                    exportTime: new Date().toLocaleString('zh-CN')
+                };
+                console.log('使用备用数据进行导出');
+            }
+            
+            // 显示格式选择对话框
+            const format = prompt('请选择导出格式：\n1. CSV格式\n2. JSON格式\n\n请输入 1 或 2', '1');
+            
+            if (!format || (format !== '1' && format !== '2')) {
+                console.log('用户取消导出');
+                return;
+            }
+            
+            let content, filename, mimeType;
+            
+            if (format === '1') {
+                // 导出为CSV格式
+                content = this.convertToCSV(exportData);
+                filename = `${this.config.currentCity.name}_${this.getChartTitle()}_${this.config.currentTimeRange}_${new Date().getTime()}.csv`;
+                mimeType = 'text/csv;charset=utf-8;';
+                console.log('准备导出CSV文件:', filename);
+            } else {
+                // 导出为JSON格式
+                content = JSON.stringify(exportData, null, 2);
+                filename = `${this.config.currentCity.name}_${this.getChartTitle()}_${this.config.currentTimeRange}_${new Date().getTime()}.json`;
+                mimeType = 'application/json;charset=utf-8;';
+                console.log('准备导出JSON文件:', filename);
+            }
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            const blob = new Blob([content], { type: mimeType });
+            
+            // 处理不同浏览器的兼容性
+            if (navigator.msSaveBlob) {
+                // IE 10+
+                navigator.msSaveBlob(blob, filename);
+            } else {
+                // 其他现代浏览器
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                link.download = filename;
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 清理URL对象
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }
+            
+            console.log('数据导出成功');
+            this.showNotification('数据导出成功！', 'success');
+        } catch (error) {
+            console.error('数据导出失败:', error);
+            this.showNotification('数据导出失败，请重试', 'error');
+        }
     };
     
-    // 显示天气预警
-    window.WeatherApp.showAlerts = function() {
-        alert('当前无天气预警');
+    // 将数据转换为CSV格式
+    window.WeatherApp.convertToCSV = function(data) {
+        // 添加BOM以确保Excel正确识别UTF-8编码
+        let csv = '\uFEFF';
+        
+        // 添加标题行
+        const titleMap = {
+            'temperature': '温度 (°C)',
+            'humidity': '湿度 (%)',
+            'pressure': '气压 (hPa)',
+            'windSpeed': '风速 (km/h)',
+            'precipitation': '降水量 (mm)'
+        };
+        
+        // 添加元数据信息
+        csv += `城市: ${data.city}\n`;
+        csv += `数据类型: ${titleMap[data.type] || data.type}\n`;
+        csv += `时间范围: ${data.timeRange}\n`;
+        csv += `导出时间: ${data.exportTime}\n\n`;
+        
+        // 添加表头
+        csv += '时间点,' + (titleMap[data.type] || '数值') + '\n';
+        
+        // 添加数据行
+        for (let i = 0; i < data.hours.length; i++) {
+            const hour = data.hours[i];
+            const value = data.values[i];
+            csv += `"${hour}",${value}\n`;
+        }
+        
+        return csv;
+    };
+    
+    // 显示天气预警 - 使用和风天气API获取实时预警信息
+    window.WeatherApp.showAlerts = async function() {
+        try {
+            const cityId = this.config.currentCity.id;
+            const config = window.WEATHER_CONFIG.weatherApi;
+            const url = `${config.baseUrl}/warning/now?location=${cityId}&key=${config.key}`;
+            
+            console.log(`获取${this.config.currentCity.name}的天气预警信息`);
+            
+            // 显示加载状态
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-50';
+            loadingMessage.textContent = '正在获取天气预警信息...';
+            document.body.appendChild(loadingMessage);
+            
+            // 调用API获取预警信息
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            // 移除加载提示
+            document.body.removeChild(loadingMessage);
+            
+            console.log('预警API响应:', data);
+            
+            // 检查API响应
+            if (data.code !== '200') {
+                console.warn('获取预警信息失败，API返回错误:', data.code);
+                this.showAlertModal('获取预警信息失败', '无法连接到天气预警服务，请稍后再试。', 'warning');
+                return;
+            }
+            
+            // 处理预警数据
+            const warningList = data.warning || [];
+            
+            if (warningList.length === 0) {
+                // 无预警信息
+                console.log('当前无天气预警');
+                this.showAlertModal('天气预警', '当前无天气预警信息', 'info');
+            } else {
+                // 有预警信息，格式化显示
+                console.log(`发现${warningList.length}条天气预警`);
+                const alertsHtml = this.formatWarningMessages(warningList);
+                this.showAlertModal('天气预警信息', alertsHtml, 'warning');
+            }
+        } catch (error) {
+            console.error('获取天气预警时出错:', error);
+            
+            // 移除可能存在的加载提示
+            const loadingElements = document.querySelectorAll('.fixed.top-4.right-4.bg-blue-500');
+            loadingElements.forEach(el => el.remove());
+            
+            // 显示错误信息
+            this.showAlertModal('获取预警失败', '获取天气预警信息时发生错误，请检查网络连接后重试。', 'error');
+        }
+    };
+    
+    // 格式化预警信息为HTML
+    window.WeatherApp.formatWarningMessages = function(warningList) {
+        let html = `<div class="space-y-4">
+            <p class="text-lg font-bold text-yellow-600">当前地区共有 ${warningList.length} 条预警信息</p>
+        `;
+        
+        warningList.forEach((warning, index) => {
+            // 预警等级颜色映射
+            const levelColorMap = {
+                '一般': 'bg-blue-100 text-blue-800',
+                '较重': 'bg-yellow-100 text-yellow-800',
+                '严重': 'bg-orange-100 text-orange-800',
+                '特别严重': 'bg-red-100 text-red-800'
+            };
+            
+            const level = warning.level || '未知';
+            const levelClass = levelColorMap[level] || 'bg-gray-100 text-gray-800';
+            
+            // 格式化发布时间
+            const pubTime = warning.pubTime ? new Date(warning.pubTime).toLocaleString('zh-CN') : '未知';
+            
+            html += `
+                <div class="border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-red-600">${warning.sender} - ${warning.title}</h3>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${levelClass}">${level}</span>
+                    </div>
+                    <p class="text-gray-700 mb-2">${warning.text || '暂无详细信息'}</p>
+                    <div class="text-sm text-gray-500">
+                        <p>发布时间: ${pubTime}</p>
+                        ${warning.effective ? `<p>生效时间: ${new Date(warning.effective).toLocaleString('zh-CN')}</p>` : ''}
+                        ${warning.expires ? `<p>过期时间: ${new Date(warning.expires).toLocaleString('zh-CN')}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+        return html;
+    };
+    
+    // 显示预警模态框
+    window.WeatherApp.showAlertModal = function(title, message, type = 'info') {
+        // 移除已存在的模态框
+        const existingModal = document.getElementById('weatherAlertModal');
+        if (existingModal) {
+            document.body.removeChild(existingModal);
+        }
+        
+        // 创建模态框背景
+        const modal = document.createElement('div');
+        modal.id = 'weatherAlertModal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.style.backdropFilter = 'blur(2px)';
+        
+        // 确定图标和样式
+        let icon, bgColor;
+        switch (type) {
+            case 'warning':
+                icon = '⚠️';
+                bgColor = 'border-yellow-500';
+                break;
+            case 'error':
+                icon = '❌';
+                bgColor = 'border-red-500';
+                break;
+            case 'success':
+                icon = '✅';
+                bgColor = 'border-green-500';
+                break;
+            default:
+                icon = 'ℹ️';
+                bgColor = 'border-blue-500';
+        }
+        
+        // 模态框内容
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border-l-4 ${bgColor}">
+                <div class="flex items-center justify-between p-4 border-b">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">${icon}</span>
+                        <h2 class="text-xl font-bold text-gray-800">${title}</h2>
+                    </div>
+                    <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-xl">×</button>
+                </div>
+                <div class="p-6 text-gray-700">
+                    ${typeof message === 'string' ? message : message.toString()}
+                </div>
+                <div class="flex justify-end p-4 border-t">
+                    <button id="confirmModalBtn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                        确定
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(modal);
+        
+        // 添加事件监听
+        const closeBtn = document.getElementById('closeModalBtn');
+        const confirmBtn = document.getElementById('confirmModalBtn');
+        const closeModal = () => {
+            document.body.removeChild(modal);
+        };
+        
+        closeBtn.addEventListener('click', closeModal);
+        confirmBtn.addEventListener('click', closeModal);
+        
+        // 点击模态框外部关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // 按ESC键关闭
+        document.addEventListener('keydown', function handleEsc(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        });
     };
     
     // 暴露必要的方法到全局作用域
