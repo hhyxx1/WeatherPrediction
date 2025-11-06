@@ -472,6 +472,11 @@ window.WeatherApp = window.WeatherApp || {};
                     url = `${config.baseUrl}/weather/15d?location=${cityId}&key=${config.key}`;
                     dataKey = 'daily';
                     break;
+                case '30d':
+                    // 30天预报
+                    url = `${config.baseUrl}/weather/30d?location=${cityId}&key=${config.key}`;
+                    dataKey = 'daily';
+                    break;
                 default:
                     // 默认使用24小时预报
                     url = `${config.baseUrl}/weather/24h?location=${cityId}&key=${config.key}`;
@@ -549,25 +554,30 @@ window.WeatherApp = window.WeatherApp || {};
                                 values.push(parseInt(item.temp) || 0);
                             } else {
                                 // 日预报使用平均温度或最高温度
+                                // 新API使用tempMax字段表示最高温度
                                 values.push(parseInt(item.tempMax) || 0);
                             }
                             break;
                         case 'humidity':
+                            // 新API使用humidity字段表示相对湿度
                             values.push(parseInt(item.humidity) || 0);
                             break;
                         case 'pressure':
+                            // 新API使用pressure字段表示大气压强
                             values.push(parseInt(item.pressure) || 0);
                             break;
                         case 'windSpeed':
-                            // 将风速从 m/s 转换为 km/h
-                            values.push(parseFloat(item.windSpeed) * 3.6 || 0);
+                            // 新API的windSpeedDay/windSpeedNight字段已经是公里/小时单位，无需转换
+                            if (dataKey === 'hourly') {
+                                values.push(parseFloat(item.windSpeed) * 3.6 || 0);
+                            } else {
+                                // 日预报取白天风速
+                                values.push(parseFloat(item.windSpeedDay) || 0);
+                            }
                             break;
                         case 'precipitation':
-                            if (dataKey === 'hourly') {
-                                values.push(parseFloat(item.precip) || 0);
-                            } else {
-                                values.push(parseFloat(item.precip) || 0);
-                            }
+                            // 新API使用precip字段表示降水量
+                            values.push(parseFloat(item.precip) || 0);
                             break;
                         default:
                             if (dataKey === 'hourly') {
@@ -578,9 +588,10 @@ window.WeatherApp = window.WeatherApp || {};
                     }
                 });
                 
-                // 数据扩展处理 - 生成真实连续的时间
+                // 处理所有时间范围的数据，确保时间轴正确显示
+                // 对于小时级数据（24h, 48h, 72h），生成连续的时间标签
                 if ((timeRange === '24h' || timeRange === '48h' || timeRange === '72h') && labels.length > 0) {
-                    console.log(`扩展数据到${timeRange}`);
+                    console.log(`处理${timeRange}时间范围的小时数据`);
                     const hoursToGenerate = timeRange === '24h' ? 24 : (timeRange === '48h' ? 48 : 72);
                     const extendedLabels = [];
                     const extendedValues = [];
@@ -588,72 +599,27 @@ window.WeatherApp = window.WeatherApp || {};
                     // 获取当前时间
                     const now = new Date();
                     
-                    // 生成过去hoursToGenerate小时的连续时间
-                    for (let i = hoursToGenerate - 1; i >= 0; i--) {
-                        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-                        const label = `${time.getHours().toString().padStart(2, '0')}:00`;
+                    // 生成从现在到未来的连续时间（修正时间轴顺序）
+                    for (let i = 0; i < hoursToGenerate; i++) {
+                        // 确保计算时间时使用正确的毫秒数
+                        const time = new Date(now.getTime() + i * 60 * 60 * 1000);
+                        // 格式化时间标签
+                        const hours = String(time.getHours()).padStart(2, '0');
+                        const minutes = String(time.getMinutes()).padStart(2, '0');
+                        const label = `${hours}:${minutes}`;
                         
-                        // 使用循环索引从原始数据中获取值，确保数据连续性
-                        const valueIndex = i % values.length;
+                        // 确保从原始数据中获取对应的值，避免数据重复
+                        const valueIndex = i % Math.max(1, values.length);
                         extendedLabels.push(label);
                         extendedValues.push(values[valueIndex]);
                     }
                     
-                    console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
+                    console.log(`返回处理后的数据: ${extendedLabels.length}个标签`);
                     return { hours: extendedLabels, values: extendedValues };
                 }
                 
-                // 对于15天范围，生成真实的15天连续日期
-                if (timeRange === '15d' && labels.length > 0) {
-                    console.log('生成真实的15天数据');
-                    const extendedLabels = [];
-                    const extendedValues = [];
-                    
-                    // 获取当前时间
-                    const now = new Date();
-                    
-                    // 生成过去15天的连续日期
-                    for (let i = 14; i >= 0; i--) {
-                        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const label = `${month}-${day}`;
-                        
-                        // 使用循环索引从原始数据中获取值，确保数据连续性
-                        const valueIndex = i % values.length;
-                        extendedLabels.push(label);
-                        extendedValues.push(values[valueIndex]);
-                    }
-                    
-                    console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
-                    return { hours: extendedLabels, values: extendedValues };
-                }
-                
-                // 处理30天范围
-                if (timeRange === '30d' && labels.length > 0) {
-                    console.log('生成真实的30天数据');
-                    const extendedLabels = [];
-                    const extendedValues = [];
-                    
-                    // 获取当前时间
-                    const now = new Date();
-                    
-                    // 生成过去30天的连续日期
-                    for (let i = 29; i >= 0; i--) {
-                        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const label = `${month}-${day}`;
-                        
-                        // 使用循环索引从原始数据中获取值，确保数据连续性
-                        const valueIndex = i % values.length;
-                        extendedLabels.push(label);
-                        extendedValues.push(values[valueIndex]);
-                    }
-                    
-                    console.log(`返回扩展真实数据: ${extendedLabels.length}个标签`);
-                    return { hours: extendedLabels, values: extendedValues };
-                }
+                // 对于24h，7d，15d，30d范围，API已直接返回对应天数的数据，无需客户端扩展
+                // 直接返回API提供的原始数据
                 
                 console.log(`成功获取真实天气数据: ${labels.length}个数据点`);
                 return { hours: labels, values };
@@ -755,35 +721,59 @@ window.WeatherApp = window.WeatherApp || {};
         this.loadCityWeather(this.config.currentCity.id, this.config.currentCity.name);
     };
     
-    // 添加城市
-    window.WeatherApp.addCity = function() {
-        const keyword = document.getElementById('citySearch').value;
+    // 添加城市 - 使用和风天气地理编码API进行全球城市搜索
+    window.WeatherApp.addCity = async function() {
+        const keyword = document.getElementById('citySearch').value.trim();
         if (!keyword) return;
         
-        // 模拟搜索功能
-        const results = this.config.popularCities.filter(city => 
-            city.name.includes(keyword)
-        );
-        
-        if (results.length > 0) {
-            this.selectCity(results[0].id, results[0].name);
-            document.getElementById('citySearch').value = '';
+        try {
+            // 使用和风天气的地理编码API搜索城市
+            const config = window.WEATHER_CONFIG.weatherApi;
+            const url = `${config.geoBaseUrl}/city/lookup?location=${encodeURIComponent(keyword)}&key=${config.key}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.code === '200' && data.location && data.location.length > 0) {
+                // 选择第一个搜索结果
+                const city = data.location[0];
+                this.selectCity(city.id, city.name);
+                document.getElementById('citySearch').value = '';
+                this.showNotification(`已添加城市: ${city.name}`, 'success');
+            } else {
+                this.showNotification('未找到匹配的城市', 'error');
+            }
+        } catch (error) {
+            console.error('城市搜索失败:', error);
+            this.showNotification('城市搜索失败，请稍后重试', 'error');
         }
     };
     
-    // 移动端添加城市
-    window.WeatherApp.addCityMobile = function() {
-        const keyword = document.getElementById('mobileCitySearch').value;
+    // 移动端添加城市 - 使用和风天气地理编码API进行全球城市搜索
+    window.WeatherApp.addCityMobile = async function() {
+        const keyword = document.getElementById('mobileCitySearch').value.trim();
         if (!keyword) return;
         
-        // 模拟搜索功能
-        const results = this.config.popularCities.filter(city => 
-            city.name.includes(keyword)
-        );
-        
-        if (results.length > 0) {
-            this.selectCity(results[0].id, results[0].name);
-            document.getElementById('mobileCitySearch').value = '';
+        try {
+            // 使用和风天气的地理编码API搜索城市
+            const config = window.WEATHER_CONFIG.weatherApi;
+            const url = `${config.geoBaseUrl}/city/lookup?location=${encodeURIComponent(keyword)}&key=${config.key}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.code === '200' && data.location && data.location.length > 0) {
+                // 选择第一个搜索结果
+                const city = data.location[0];
+                this.selectCity(city.id, city.name);
+                document.getElementById('mobileCitySearch').value = '';
+                this.showNotification(`已添加城市: ${city.name}`, 'success');
+            } else {
+                this.showNotification('未找到匹配的城市', 'error');
+            }
+        } catch (error) {
+            console.error('城市搜索失败:', error);
+            this.showNotification('城市搜索失败，请稍后重试', 'error');
         }
     };
     
@@ -1140,6 +1130,24 @@ window.WeatherApp = window.WeatherApp || {};
         // 初始化应用
         window.initWeatherApp();
     });
+    
+    // 获取当前位置天气信息
+    window.getCurrentLocationWeather = async function() {
+        try {
+            const weatherApp = window.WeatherApp;
+            weatherApp.showNotification('正在获取您的当前位置...', 'info');
+            
+            // 获取用户位置
+            const location = await weatherApp.getUserLocation();
+            
+            // 选择并加载城市天气
+            weatherApp.selectCity(location.id, location.name);
+            weatherApp.showNotification(`已切换到您的当前位置: ${location.name}`, 'success');
+        } catch (error) {
+            console.error('获取当前位置失败:', error);
+            window.WeatherApp.showNotification('获取位置失败，请检查定位权限设置', 'error');
+        }
+    };
     
     console.log('天气应用核心模块已加载完成');
 })();

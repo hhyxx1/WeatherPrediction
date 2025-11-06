@@ -295,7 +295,10 @@
     <main class="pt-20 px-4 pb-12">
         <!-- 选中城市信息卡片 -->
         <div class="max-w-7xl mx-auto mb-8">
-            <div class="glass-effect rounded-2xl p-6 text-center">
+            <div class="glass-effect rounded-2xl p-6 text-center relative">
+                <button onclick="getCurrentLocationWeather()" class="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded-lg text-sm transition-colors">
+                    📍 当前位置
+                </button>
                 <h2 id="selectedCityName" class="text-3xl font-bold text-slate-800 mb-2">位置</h2>
                 <p id="selectedCityTime" class="text-slate-600 mb-4">----年--月--日 --:--</p>
                 <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8">
