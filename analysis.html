@@ -1435,8 +1435,14 @@
                     csvContent += headers.join(',') + '\n';
                     
                     currentPredictionData.forEach(item => {
+                        // 获取当前年份
+                        const currentYear = new Date().getFullYear();
+                        // 修改日期中的年份为当年
+                        const dateParts = item.fxDate.split('-');
+                        const updatedDate = `${currentYear}-${dateParts[1]}-${dateParts[2]}`;
+                        
                         const row = [
-                            item.fxDate,
+                            updatedDate,
                             item.tempMax,
                             item.tempMin,
                             item.precip || '',

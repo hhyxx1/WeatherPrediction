@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8092;
+const PORT = 8000;
 const HOST = 'localhost';
 
 // MIME类型映射
@@ -34,7 +34,9 @@ const server = http.createServer((req, res) => {
     }
     
     // 获取文件路径，默认访问index.html
-    let filePath = '.' + req.url;
+    // 移除URL中的查询参数和哈希部分
+    let cleanUrl = req.url.split('?')[0].split('#')[0];
+    let filePath = '.' + cleanUrl;
     if (filePath === './') {
         filePath = './index.html';
     }
@@ -50,7 +52,7 @@ const server = http.createServer((req, res) => {
     // 设置通用响应头
     res.setHeader('Content-Type', contentType);
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com https://fonts.gstatic.font.im https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://api.qweather.com https://geoapi.qweather.com https://devapi.qweather.com https://archive-api.open-meteo.com https://api.deepseek.com;");
     
     // 设置缓存控制头，针对静态资源
     if (extname !== '.html') {
@@ -62,6 +64,11 @@ const server = http.createServer((req, res) => {
     // 读取并提供文件
     fs.readFile(filePath, (error, content) => {
         if (error) {
+            // 检查是否为字体文件请求
+            const isFontFile = ['.woff', '.woff2', '.ttf', '.otf', '.eot'].some(ext => 
+                extname.toLowerCase() === ext
+            );
+            
             if (error.code === 'ENOENT') {
                 // 文件不存在，尝试提供404页面
                 fs.readFile('./404.html', (error404, content404) => {
@@ -76,12 +83,25 @@ const server = http.createServer((req, res) => {
                     res.end(content404, 'utf-8');
                 });
             } else {
-                // 其他服务器错误
-                res.writeHead(500);
-                res.end(`Server Error: ${error.code}`);
+                // 对字体文件的网络相关错误提供更健壮的处理
+                if (isFontFile && ['ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH'].includes(error.code)) {
+                    console.warn(`Network error serving font file: ${error.code} - ${filePath}`);
+                    // 设置重试头信息
+                    res.setHeader('Retry-After', '30'); // 建议客户端30秒后重试
+                    res.writeHead(503, { 'Content-Type': 'text/plain' });
+                    res.end('Service Unavailable - Please try again later');
+                } else {
+                    // 其他服务器错误
+                    res.writeHead(500);
+                    res.end(`Server Error: ${error.code}`);
+                }
             }
         } else {
             // 成功找到文件
+            // 为字体文件添加额外的缓存策略
+            if ([ '.woff', '.woff2', '.ttf', '.otf', '.eot' ].some(ext => extname.toLowerCase() === ext)) {
+                res.setHeader('Cache-Control', 'public, max-age=604800, immutable'); // 7天
+            }
             res.writeHead(200);
             res.end(content, 'utf-8');
         }
