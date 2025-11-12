@@ -43,6 +43,11 @@
 
 ## 快速开始
 
+### 前提条件
+
+- Node.js 14.x 或更高版本
+- 一个有效的DeepSeek AI API密钥（可选，用于AI预测功能）
+
 ### 1. 克隆项目
 
 ```bash
@@ -83,13 +88,13 @@ window.WEATHER_CONFIG = {
 node server.js
 ```
 
-服务器将在 **http://localhost:8092** 启动。
+服务器将在 **http://localhost:8000** 启动。
 
 ## 页面访问
 
-- **实时监控**：http://localhost:8092/
-- **深度分析**：http://localhost:8092/analysis.html
-- **关于系统**：http://localhost:8092/about.html
+- **实时监控**：http://localhost:8000/
+- **深度分析**：http://localhost:8000/analysis.html
+- **关于系统**：http://localhost:8000/about.html
 
 ## 系统配置说明
 
@@ -125,7 +130,7 @@ node server.js
    - 历年同天数据分析可用于长期气候变化趋势研究
 
 3. **服务器端口**
-   - 默认服务器端口为8092，如需修改请编辑server.js中的PORT常量
+   - 默认服务器端口为8000，如需修改请编辑server.js中的PORT常量
 
 4. **数据处理特点**
    - 系统会自动计算历年同一天的日期范围
@@ -139,10 +144,30 @@ node server.js
 - 响应式设计针对不同设备进行了性能优化
 - 批量数据请求优化，减少网络延迟影响
 
+## 安全说明
+
+- 项目包含.gitignore文件，确保API密钥等敏感信息不会被提交
+- 请勿在代码仓库中直接提交包含真实API密钥的配置文件
+- 开发过程中请使用环境变量或本地配置文件管理敏感信息
+
+## 开发与贡献
+
+1. 确保您已经安装了Node.js环境
+2. 克隆仓库并安装依赖（如果有）
+3. 配置开发环境（复制weatherApiConfig.example.js为weatherApiConfig.js）
+4. 启动开发服务器
+5. 提交代码前请确保所有功能正常工作
+
+## 故障排除
+
+- **端口占用错误**：如果8000端口已被占用，请修改server.js中的PORT常量为其他可用端口
+- **API连接问题**：检查网络连接和API配置是否正确
+- **数据加载失败**：尝试刷新页面或检查控制台错误信息
+
 ## 许可证
 
 MIT License
 
 ---
 
-© 2025 全球天气数据分析与预测系统 | 技术支持：Open Meteo API & DeepSeek AI
+© 2024 全球天气数据分析与预测系统 | 技术支持：Open Meteo API & DeepSeek AI
